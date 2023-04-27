@@ -1,8 +1,29 @@
 import moderngl
 import pygame
+import random
+import math
 
 import camera
 import sprite
+
+
+def random_sprite(ctx: moderngl.Context, texture: moderngl.Texture) -> sprite.Sprite:
+    sprt = sprite.Sprite(ctx)
+    sprt.texture = texture
+    sprt.color = pygame.Color(random.randrange(255), random.randrange(255), random.randrange(255))
+    sprt.position.x = random.randrange(800)
+    sprt.position.y = random.randrange(600)
+    sprt.rotation = random.randrange(360)
+    sprt.scale.x = random.randrange(150) + 50
+    sprt.scale.y = random.randrange(150) + 50
+    return sprt
+
+
+def modify_sprite(s: sprite.Sprite, total_ms: int, elapsed_ms: int) -> None:
+    s.rotation += elapsed_ms * 0.25
+    s.scale.x += math.sin(total_ms) * 10
+    s.scale.y += math.cos(total_ms) * 10
+    s.color = pygame.Color(random.randrange(255), random.randrange(255), random.randrange(255))
 
 
 def main() -> None:
@@ -19,31 +40,17 @@ def main() -> None:
     tex = sprite.texture_from_surface(context, pygame.image.load('ship.png'))
     tex.filter = moderngl.NEAREST, moderngl.NEAREST
 
-    # create sprites
-    my_sprite = sprite.Sprite(context)
-    my_sprite.texture = tex
-    my_sprite.color = pygame.Color('blue')
-    my_sprite.position.x = 0.5
-    my_sprite.rotation = -25.3
-    my_sprite.scale.x = 0.25
-    my_sprite.scale.y = 0.25
+    sprite_list = [random_sprite(context, tex) for i in range(350)]
 
-    other_sprite = sprite.Sprite(context)
-    other_sprite.texture = tex
-    other_sprite.color = pygame.Color('red')
-    other_sprite.position.x = -0.25
-    other_sprite.position.y = -0.25
-    other_sprite.rotation = 12.79
-    other_sprite.scale.x = 0.5
-    other_sprite.scale.y = 0.35
-
-    cam = camera.Camera(window)
+    cam = camera.Camera()
     cam.position.x = 0.25
     cam.position.y = -0.5
     cam.rotation = -22.0
     cam.update()
 
     max_fps = 600
+    elapsed_ms = 0
+    total_ms = 0
     running = True
     while running:
         for event in pygame.event.get():
@@ -51,11 +58,15 @@ def main() -> None:
                 running = False
 
         context.clear(color=(0.08, 0.16, 0.18, 0.0))
-        my_sprite.render(cam.m_view, cam.m_proj)
-        other_sprite.render(cam.m_view, cam.m_proj)
+
+        for s in sprite_list:
+            modify_sprite(s, total_ms, elapsed_ms)
+            s.render(cam.m_view, cam.m_proj)
+
         pygame.display.flip()
 
-        clock.tick(max_fps)
+        elapsed_ms = clock.tick(max_fps)
+        total_ms += elapsed_ms
         pygame.display.set_caption(f'{int(clock.get_fps())} FPS')
 
     pygame.quit()

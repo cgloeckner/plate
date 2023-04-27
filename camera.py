@@ -3,12 +3,9 @@ import glm
 
 
 class Camera:
-    def __init__(self, window: pygame.Surface):
+    def __init__(self):
         self.position = glm.vec3(0, 0, 1)
         self.rotation = 0.0
-
-        self._window_size = window.get_size()
-        self._aspect_ratio = self._window_size[0] / self._window_size[1]
 
         self._right = glm.vec3(1, 0, 0)
         self._up = glm.vec3(0, 1, 0)
@@ -18,7 +15,7 @@ class Camera:
         self.m_proj = self._get_projection_matrix()
 
     def update(self) -> None:
-        """Updates matrices after altering the camera."""
+        """Updates matrices after altering the camera or window size."""
         self.m_view = self._get_view_matrix()
         self.m_proj = self._get_projection_matrix()
 
@@ -29,6 +26,5 @@ class Camera:
 
     def _get_projection_matrix(self) -> glm.mat4x4:
         """Return the projection matrix (usually once)."""
-        return glm.ortho(-self._aspect_ratio * self.position.z, self._aspect_ratio * self.position.z,
-                         -self.position.z, self.position.z, 0.01, 50)
-
+        size = pygame.display.get_window_size()
+        return glm.ortho(0, size[0], 0, size[1], 0.01, 50)

@@ -7,11 +7,9 @@ import glm
 vertex_shader = """
 #version 330 core
 
-layout (location = 0) in vec4 in_color;
-layout (location = 1) in vec2 in_texcoord_0;
-layout (location = 2) in vec3 in_position;
+layout (location = 0) in vec2 in_texcoord_0;
+layout (location = 1) in vec3 in_position;
 
-out vec4 v_color;
 out vec2 uv_0;
 
 uniform mat4 m_proj;
@@ -19,7 +17,6 @@ uniform mat4 m_view;
 uniform mat4 m_model;
 
 void main() {
-    v_color = vec4(in_color.rgb, 1.0);
     uv_0 = in_texcoord_0;
     gl_Position = m_proj * m_view * m_model * vec4(in_position, 1.0);
 }"""
@@ -30,10 +27,10 @@ fragment_shader = """
 
 layout (location = 0) out vec4 frag_color;
 
-in vec4 v_color;
 in vec2 uv_0;
 
 uniform sampler2D u_texture_0;
+uniform vec4 v_color;
 
 void main() { 
     vec4 tex_color = v_color * texture(u_texture_0, uv_0);
@@ -91,19 +88,20 @@ class Sprite:
         indices = [(0, 1, 2), (0, 2, 3)]
         vertex_data = build_vertices(vertices, indices)
         tex_coord_data = build_vertices(tex_coord, indices)
-        color_data = build_vertices(colors, indices)
-        vertex_data = numpy.hstack([color_data, tex_coord_data, vertex_data])
+        #color_data = build_vertices(colors, indices)
+        vertex_data = numpy.hstack([tex_coord_data, vertex_data])
 
         self._cleanup()
         self._vbo = self._ctx.buffer(vertex_data)
         self._shader = self._ctx.program(vertex_shader=vertex_shader, fragment_shader=fragment_shader)
         self._shader['u_texture_0'] = 0
         self._vao = self._ctx.vertex_array(self._shader,
-                                           [(self._vbo, '4f 2f 3f', 'in_color', 'in_texcoord_0', 'in_position')])
+                                           [(self._vbo, '2f 3f', 'in_texcoord_0', 'in_position')])
 
     def _set_color(self, value: pygame.Color) -> None:
         self._color = value
-        self._update()
+        #self._update()
+        self._shader['v_color'] = value.normalize()
 
     color = property(lambda self: self._color, _set_color)
 
