@@ -3,6 +3,8 @@ import moderngl
 import numpy
 import glm
 
+import camera
+
 
 vertex_shader = """
 #version 330 core
@@ -51,13 +53,12 @@ def build_vertices(vertices_array, indices_array) -> numpy.array:
     return numpy.array(data, dtype='f4')
 
 
-class Sprite:
-    def __init__(self, ctx: moderngl.Context):
-        self.position = pygame.Vector2(0.0, 0.0)
-        self.rotation = 0.0
-        self.scale = pygame.Vector2(1.0, 1.0)
-        self.color = pygame.Color('white')
-        self.texture = None
+class RenderContext:
+    def __init__(self, ctx: moderngl.Context, cam: camera.Camera):
+        self.cam = cam
+
+        self.shader = ctx.program(vertex_shader=vertex_shader, fragment_shader=fragment_shader)
+        self.shader['u_texture_0'] = 0
 
         # order: top left, top right, bottom right, bottom left
         vertices = [(-0.5, -0.5, 0.0), (0.5, -0.5, 0.0), (0.5, 0.5, 0.0), (-0.5, 0.5, 0.0)]
@@ -68,15 +69,22 @@ class Sprite:
         tex_coord_data = build_vertices(tex_coord, indices)
         vertex_data = numpy.hstack([tex_coord_data, vertex_data])
 
-        self._vbo = ctx.buffer(vertex_data)
-        self._shader = ctx.program(vertex_shader=vertex_shader, fragment_shader=fragment_shader)
-        self._shader['u_texture_0'] = 0
-        self._vao = ctx.vertex_array(self._shader, [(self._vbo, '2f 3f', 'in_texcoord_0', 'in_position')])
+        self.vbo = ctx.buffer(vertex_data)
+        self.vao = ctx.vertex_array(self.shader, [(self.vbo, '2f 3f', 'in_texcoord_0', 'in_position')])
 
     def __del__(self):
-        self._shader.release()
-        self._vbo.release()
-        self._vao.release()
+        self.shader.release()
+        self.vbo.release()
+        self.vao.release()
+
+
+class Sprite:
+    def __init__(self):
+        self.position = pygame.Vector2(0.0, 0.0)
+        self.rotation = 0.0
+        self.scale = pygame.Vector2(1.0, 1.0)
+        self.color = pygame.Color('white')
+        self.texture = None
 
     def _get_transform(self) -> glm.mat4x4:
         """Returns the model transformation matrix."""
@@ -85,15 +93,15 @@ class Sprite:
         m_model *= glm.scale(glm.mat4(), glm.vec3(self.scale.x, self.scale.y, 1.0))
         return m_model
 
-    def render(self, m_view: glm.mat4x4, m_proj: glm.mat4x4) -> None:
+    def render(self, context: RenderContext) -> None:
         """Renders the sprite using the given view and projection matrices."""
         if self.texture is None:
             return
 
         self.texture.use()
-        self._shader['m_model'].write(self._get_transform())
-        self._shader['m_view'].write(m_view)
-        self._shader['m_proj'].write(m_proj)
-        self._shader['v_color'] = self.color.normalize()
 
-        self._vao.render()
+        context.shader['m_model'].write(self._get_transform())
+        context.shader['m_view'].write(context.cam.m_view)
+        context.shader['m_proj'].write(context.cam.m_proj)
+        context.shader['v_color'] = self.color.normalize()
+        context.vao.render()

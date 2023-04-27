@@ -7,12 +7,14 @@ import camera
 import sprite
 
 
-def random_sprite(ctx: moderngl.Context, texture: moderngl.Texture) -> sprite.Sprite:
-    new_sprite = sprite.Sprite(ctx)
+def random_sprite(texture: moderngl.Texture) -> sprite.Sprite:
+    size = pygame.display.get_window_size()
+
+    new_sprite = sprite.Sprite()
     new_sprite.texture = texture
     new_sprite.color = pygame.Color(random.randrange(255), random.randrange(255), random.randrange(255))
-    new_sprite.position.x = random.randrange(800)
-    new_sprite.position.y = random.randrange(600)
+    new_sprite.position.x = random.randrange(size[0])
+    new_sprite.position.y = random.randrange(size[1])
     new_sprite.rotation = random.randrange(360)
     new_sprite.scale.x = random.randrange(150) + 50
     new_sprite.scale.y = random.randrange(150) + 50
@@ -32,7 +34,7 @@ def main() -> None:
     pygame.display.gl_set_attribute(pygame.GL_CONTEXT_MINOR_VERSION, 3)
     pygame.display.gl_set_attribute(pygame.GL_CONTEXT_PROFILE_MASK, pygame.GL_CONTEXT_PROFILE_CORE)
 
-    pygame.display.set_mode((800, 600), flags=pygame.OPENGL | pygame.DOUBLEBUF)
+    pygame.display.set_mode((1600, 900), flags=pygame.OPENGL | pygame.DOUBLEBUF)
     context = moderngl.create_context()
     context.enable(moderngl.BLEND)  # required for alpha stuff
     clock = pygame.time.Clock()
@@ -40,13 +42,15 @@ def main() -> None:
     tex = sprite.texture_from_surface(context, pygame.image.load('ship.png'))
     tex.filter = moderngl.NEAREST, moderngl.NEAREST
 
-    sprite_list = [random_sprite(context, tex) for _ in range(350)]
+    sprite_list = [random_sprite(tex) for _ in range(1000)]
 
     cam = camera.Camera()
-    cam.position.x = 0.25
-    cam.position.y = -0.5
-    cam.rotation = -22.0
+    #cam.position.x = 0.25
+    #cam.position.y = -0.5
+    #cam.rotation = -22.0
     cam.update()
+
+    render_context = sprite.RenderContext(context, cam)
 
     max_fps = 600
     elapsed_ms = 0
@@ -61,7 +65,7 @@ def main() -> None:
 
         for s in sprite_list:
             modify_sprite(s, total_ms, elapsed_ms)
-            s.render(cam.m_view, cam.m_proj)
+            s.render(render_context)
 
         pygame.display.flip()
 
