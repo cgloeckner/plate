@@ -56,54 +56,27 @@ class Sprite:
         self.position = pygame.Vector2(0.0, 0.0)
         self.rotation = 0.0
         self.scale = pygame.Vector2(1.0, 1.0)
+        self.color = pygame.Color('white')
         self.texture = None
 
-        self._color = pygame.Color('white')
-
-        self._ctx = ctx
-        self._shader = None
-        self._vbo = None
-        self._vao = None
-        self._update()
-
-    def __del__(self):
-        self._cleanup()
-
-    def _cleanup(self) -> None:
-        """Releases moderngl objects if possible."""
-        if self._shader is not None:
-            self._shader.release()
-        if self._vbo is not None:
-            self._vbo.release()
-        if self._vao is not None:
-            self._vao.release()
-
-    def _update(self) -> None:
-        """Updates the vertex array object"""
         # order: top left, top right, bottom right, bottom left
         vertices = [(-0.5, -0.5, 0.0), (0.5, -0.5, 0.0), (0.5, 0.5, 0.0), (-0.5, 0.5, 0.0)]
         tex_coord = [(0, 0), (1, 0), (1, 1), (0, 1)]
-        colors = [self._color.normalize()] * 4
 
         indices = [(0, 1, 2), (0, 2, 3)]
         vertex_data = build_vertices(vertices, indices)
         tex_coord_data = build_vertices(tex_coord, indices)
-        #color_data = build_vertices(colors, indices)
         vertex_data = numpy.hstack([tex_coord_data, vertex_data])
 
-        self._cleanup()
-        self._vbo = self._ctx.buffer(vertex_data)
-        self._shader = self._ctx.program(vertex_shader=vertex_shader, fragment_shader=fragment_shader)
+        self._vbo = ctx.buffer(vertex_data)
+        self._shader = ctx.program(vertex_shader=vertex_shader, fragment_shader=fragment_shader)
         self._shader['u_texture_0'] = 0
-        self._vao = self._ctx.vertex_array(self._shader,
-                                           [(self._vbo, '2f 3f', 'in_texcoord_0', 'in_position')])
+        self._vao = ctx.vertex_array(self._shader, [(self._vbo, '2f 3f', 'in_texcoord_0', 'in_position')])
 
-    def _set_color(self, value: pygame.Color) -> None:
-        self._color = value
-        #self._update()
-        self._shader['v_color'] = value.normalize()
-
-    color = property(lambda self: self._color, _set_color)
+    def __del__(self):
+        self._shader.release()
+        self._vbo.release()
+        self._vao.release()
 
     def _get_transform(self) -> glm.mat4x4:
         """Returns the model transformation matrix."""
@@ -121,5 +94,6 @@ class Sprite:
         self._shader['m_model'].write(self._get_transform())
         self._shader['m_view'].write(m_view)
         self._shader['m_proj'].write(m_proj)
+        self._shader['v_color'] = self.color.normalize()
 
         self._vao.render()

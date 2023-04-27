@@ -8,22 +8,22 @@ import sprite
 
 
 def random_sprite(ctx: moderngl.Context, texture: moderngl.Texture) -> sprite.Sprite:
-    sprt = sprite.Sprite(ctx)
-    sprt.texture = texture
-    sprt.color = pygame.Color(random.randrange(255), random.randrange(255), random.randrange(255))
-    sprt.position.x = random.randrange(800)
-    sprt.position.y = random.randrange(600)
-    sprt.rotation = random.randrange(360)
-    sprt.scale.x = random.randrange(150) + 50
-    sprt.scale.y = random.randrange(150) + 50
-    return sprt
+    new_sprite = sprite.Sprite(ctx)
+    new_sprite.texture = texture
+    new_sprite.color = pygame.Color(random.randrange(255), random.randrange(255), random.randrange(255))
+    new_sprite.position.x = random.randrange(800)
+    new_sprite.position.y = random.randrange(600)
+    new_sprite.rotation = random.randrange(360)
+    new_sprite.scale.x = random.randrange(150) + 50
+    new_sprite.scale.y = random.randrange(150) + 50
+    return new_sprite
 
 
-def modify_sprite(s: sprite.Sprite, total_ms: int, elapsed_ms: int) -> None:
-    s.rotation += elapsed_ms * 0.25
-    s.scale.x += math.sin(total_ms) * 10
-    s.scale.y += math.cos(total_ms) * 10
-    s.color = pygame.Color(random.randrange(255), random.randrange(255), random.randrange(255))
+def modify_sprite(existing_sprite: sprite.Sprite, total_ms: int, elapsed_ms: int) -> None:
+    existing_sprite.rotation += elapsed_ms * 0.25
+    existing_sprite.scale.x += math.sin(total_ms) * 10
+    existing_sprite.scale.y += math.cos(total_ms) * 10
+    existing_sprite.color = pygame.Color(random.randrange(255), random.randrange(255), random.randrange(255))
 
 
 def main() -> None:
@@ -32,7 +32,7 @@ def main() -> None:
     pygame.display.gl_set_attribute(pygame.GL_CONTEXT_MINOR_VERSION, 3)
     pygame.display.gl_set_attribute(pygame.GL_CONTEXT_PROFILE_MASK, pygame.GL_CONTEXT_PROFILE_CORE)
 
-    window = pygame.display.set_mode((800, 600), flags=pygame.OPENGL | pygame.DOUBLEBUF)
+    pygame.display.set_mode((800, 600), flags=pygame.OPENGL | pygame.DOUBLEBUF)
     context = moderngl.create_context()
     context.enable(moderngl.BLEND)  # required for alpha stuff
     clock = pygame.time.Clock()
@@ -40,7 +40,7 @@ def main() -> None:
     tex = sprite.texture_from_surface(context, pygame.image.load('ship.png'))
     tex.filter = moderngl.NEAREST, moderngl.NEAREST
 
-    sprite_list = [random_sprite(context, tex) for i in range(350)]
+    sprite_list = [random_sprite(context, tex) for _ in range(350)]
 
     cam = camera.Camera()
     cam.position.x = 0.25
