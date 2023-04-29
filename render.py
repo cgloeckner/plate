@@ -178,27 +178,21 @@ class Sprite:
 
     def __init__(self, texture: moderngl.Texture, clip: Optional[pygame.Rect] = None):
         """Creates a sprite using a texture and an optional clipping rectangle."""
-        if clip is None:
-            self.size = pygame.math.Vector2(*texture.size)
-            self.clip = pygame.Rect(0, 0, *self.size)
-        else:
-            self.size = pygame.math.Vector2(clip.w, clip.h)
-            self.clip = clip
-
         self.center = pygame.math.Vector2(0, 0)
+        self.scale = pygame.math.Vector2(1, 1)
         self.rotation = 0.0
         self.color = pygame.Color('white')
+        self.clip = pygame.Rect(0, 0, *texture.size) if clip is None else clip
         self.texture = texture
 
     def as_tuple(self) -> Tuple[float, ...]:
         """Returns the sprite data as tuple, where color and clipping rect are normalized."""
+        size = pygame.math.Vector2(self.clip.size).elementwise() * self.scale
         color = self.color.normalize()
-        tex_size = self.texture.size
-        clip_x = self.clip.x / tex_size[0]
-        clip_y = self.clip.y / tex_size[1]
-        clip_w = self.clip.w / tex_size[0]
-        clip_h = self.clip.h / tex_size[1]
-        return *self.center, *self.size, self.rotation, *color, clip_x, clip_y, clip_w, clip_h
+        tex_size = pygame.math.Vector2(self.texture.size)
+        clip_xy = pygame.math.Vector2(self.clip.topleft).elementwise() / tex_size
+        clip_wh = pygame.math.Vector2(self.clip.size).elementwise() / tex_size
+        return *self.center, *size, self.rotation, *color, *clip_xy, *clip_wh
 
 
 # ----------------------------------------------------------------------------------------------------------------------

@@ -43,19 +43,25 @@ def main() -> None:
     for y in range(50):
         for x in range(50):
             s = render.Sprite(tex2)
-            s.center.x = x * 64
-            s.center.y = y * 64
+            s.center.x = x * 128
+            s.center.y = y * 128
+            s.scale.x = 2
+            s.scale.y = 2
             s.rotation = random.randrange(360)
             s.color = pygame.Color(random.randrange(255), random.randrange(255), random.randrange(255))
             batch.append(s)
 
     max_fps = 600
     elapsed_ms = 0
+    total_ms = 0
     running = True
     while running:
         for event in pygame.event.get():
             if event.type == pygame.QUIT or (event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE):
                 running = False
+
+        s1.scale.x = 1 + math.sin(total_ms / 250) * 0.05
+        s1.scale.y = 1 + math.sin(total_ms / 250) * 0.05
 
         keys = pygame.key.get_pressed()
         if keys[pygame.K_a]:
@@ -89,6 +95,7 @@ def main() -> None:
         pygame.display.flip()
 
         elapsed_ms = clock.tick(max_fps)
+        total_ms += elapsed_ms
         pygame.display.set_caption(f'{int(clock.get_fps())} FPS')
 
     pygame.quit()
