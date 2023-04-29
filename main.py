@@ -94,6 +94,9 @@ def main() -> None:
         camera.center = s1.center.copy()
         camera.update()
 
+        #visible = camera.get_rect()
+        #print(visible.left, visible.right, visible.top, visible.bottom)
+
         context.clear(color=(0.08, 0.16, 0.18, 0.0))
         #camera.render_batch(batch)
         camera.render(tile)

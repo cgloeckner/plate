@@ -263,6 +263,11 @@ class Camera:
     def get_size(self) -> pygame.math.Vector2:
         return self._screen_size / self.zoom
 
+    def get_rect(self) -> pygame.Rect:
+        rect = pygame.Rect(0, 0, *self.get_size())
+        rect.center = self.center.copy()
+        return rect
+
     def _get_view_matrix(self) -> glm.mat4x4:
         """Return the view matrix (usually after camera moved)."""
         size = self.get_size()
