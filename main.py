@@ -1,6 +1,5 @@
 import pygame
 import moderngl
-import glm
 import random
 import math
 
@@ -39,9 +38,12 @@ def main() -> None:
     s2 = render.Sprite(tex1, clip=pygame.Rect(0, 0, 32, 32))
     s2.center.y = 250
 
-    batch = render.Batch(context, 50*50)
-    for y in range(50):
-        for x in range(50):
+    num_y = 50
+    num_x = 100
+    """
+    batch = render.Batch(context, num_y * num_x)
+    for y in range(num_y):
+        for x in range(num_x):
             s = render.Sprite(tex2)
             s.center.x = x * 128
             s.center.y = y * 128
@@ -50,6 +52,10 @@ def main() -> None:
             s.rotation = random.randrange(360)
             s.color = pygame.Color(random.randrange(255), random.randrange(255), random.randrange(255))
             batch.append(s)
+    """
+    tile = render.Sprite(tex2)
+    tile.clip.w *= num_x
+    tile.clip.h *= num_y
 
     max_fps = 600
     elapsed_ms = 0
@@ -89,7 +95,8 @@ def main() -> None:
         camera.update()
 
         context.clear(color=(0.08, 0.16, 0.18, 0.0))
-        camera.render_batch(batch)
+        #camera.render_batch(batch)
+        camera.render(tile)
         camera.render(s1)
         camera.render(s2)
         pygame.display.flip()

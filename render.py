@@ -268,8 +268,6 @@ class Camera:
         size = self.get_size()
         up_vector = glm.rotate(self._up, glm.radians(self.rotation), self._into)
         pos = glm.vec3(*self.center.xy, 1)
-        #pos.x -= size[0] // 4
-        #pos.y -= size[1] // 4
         return glm.lookAt(pos, pos - self._into, up_vector)
 
     def _get_projection_matrix(self) -> glm.mat4x4:
