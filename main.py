@@ -7,19 +7,6 @@ import math
 import render
 
 
-def random_sprite(texture: moderngl.Texture) -> render.Sprite:
-    size = pygame.display.get_window_size()
-
-    new_sprite = render.Sprite(texture, pygame.Rect(0, 0, 32, 32))
-    new_sprite.color = pygame.Color(random.randrange(255), random.randrange(255), random.randrange(255))
-    new_sprite.pos.x = random.randrange(size[0])
-    new_sprite.pos.y = random.randrange(size[1])
-    new_sprite.rotation = random.randrange(360)
-    new_sprite.size.x = random.randrange(150) + 50
-    new_sprite.size.y = random.randrange(150) + 50
-    return new_sprite
-
-
 def main() -> None:
     pygame.init()
     pygame.display.gl_set_attribute(pygame.GL_CONTEXT_MAJOR_VERSION, 3)
@@ -34,26 +21,33 @@ def main() -> None:
 
     surface = pygame.image.load('ship.png')
     tex0 = context.texture(size=surface.get_size(), components=4, data=pygame.image.tostring(surface, 'RGBA', True))
+    tex0.filter = moderngl.NEAREST, moderngl.NEAREST
     surface = pygame.image.load('ufo.png')
     tex1 = context.texture(size=surface.get_size(), components=4, data=pygame.image.tostring(surface, 'RGBA', True))
+    tex1.filter = moderngl.NEAREST, moderngl.NEAREST
     surface = pygame.image.load('tile.png')
     tex2 = context.texture(size=surface.get_size(), components=4, data=pygame.image.tostring(surface, 'RGBA', True))
+    tex2.filter = moderngl.NEAREST, moderngl.NEAREST
 
     camera = render.Camera(context)
 
     s1 = render.Sprite(tex0, clip=pygame.Rect(0, 0, 32, 32))
-    s1.pos.x = size[0] // 2
-    s1.pos.y = size[1] // 2
+
+    forward = pygame.math.Vector2(0, 1)
+    right = pygame.math.Vector2(1, 0)
 
     s2 = render.Sprite(tex1, clip=pygame.Rect(0, 0, 32, 32))
-    s2.pos.x = size[0] // 2
-    s2.pos.y = size[1] // 4 * 3
+    s2.center.y = 250
 
-    sprites = [random_sprite(tex2) for _ in range(3000)]
-
-    batch = render.Batch(context, len(sprites))
-    for s in sprites:
-        batch.append(s)
+    batch = render.Batch(context, 50*50)
+    for y in range(50):
+        for x in range(50):
+            s = render.Sprite(tex2)
+            s.center.x = x * 64
+            s.center.y = y * 64
+            s.rotation = random.randrange(360)
+            s.color = pygame.Color(random.randrange(255), random.randrange(255), random.randrange(255))
+            batch.append(s)
 
     max_fps = 600
     elapsed_ms = 0
@@ -63,20 +57,30 @@ def main() -> None:
             if event.type == pygame.QUIT or (event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE):
                 running = False
 
-        camera.update()
         keys = pygame.key.get_pressed()
         if keys[pygame.K_a]:
-            camera.position.x -= 0.25 * elapsed_ms
+            s1.center += right.rotate(s1.rotation) * -0.5 * elapsed_ms
         if keys[pygame.K_d]:
-            camera.position.x += 0.25 * elapsed_ms
+            s1.center += right.rotate(s1.rotation) * 0.5 * elapsed_ms
         if keys[pygame.K_s]:
-            camera.position.y -= 0.25 * elapsed_ms
+            s1.center += forward.rotate(s1.rotation) * -0.5 * elapsed_ms
         if keys[pygame.K_w]:
-            camera.position.y += 0.25 * elapsed_ms
+            s1.center += forward.rotate(s1.rotation) * 0.5 * elapsed_ms
         if keys[pygame.K_q]:
-            camera.rotation += 0.1 * elapsed_ms
+            s1.rotation += 0.1 * elapsed_ms
         if keys[pygame.K_e]:
-            camera.rotation -= 0.1 * elapsed_ms
+            s1.rotation -= 0.1 * elapsed_ms
+        if keys[pygame.K_PLUS]:
+            camera.zoom *= (1 + 0.001 * elapsed_ms)
+            if camera.zoom > 5.0:
+                camera.zoom = 5.0
+        if keys[pygame.K_MINUS]:
+            camera.zoom *= (1 - 0.001 * elapsed_ms)
+            if camera.zoom < 0.1:
+                camera.zoom = 0.1
+
+        camera.center = s1.center.copy()
+        camera.update()
 
         context.clear(color=(0.08, 0.16, 0.18, 0.0))
         camera.render_batch(batch)

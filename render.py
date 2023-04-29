@@ -185,7 +185,7 @@ class Sprite:
             self.size = pygame.math.Vector2(clip.w, clip.h)
             self.clip = clip
 
-        self.pos = pygame.math.Vector2(0, 0)
+        self.center = pygame.math.Vector2(0, 0)
         self.rotation = 0.0
         self.color = pygame.Color('white')
         self.texture = texture
@@ -198,7 +198,7 @@ class Sprite:
         clip_y = self.clip.y / tex_size[1]
         clip_w = self.clip.w / tex_size[0]
         clip_h = self.clip.h / tex_size[1]
-        return *self.pos, *self.size, self.rotation, *color, clip_x, clip_y, clip_w, clip_h
+        return *self.center, *self.size, self.rotation, *color, clip_x, clip_y, clip_w, clip_h
 
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -246,7 +246,7 @@ class Camera:
     """Provides a 2D orthographic camera with the potential of rendering single sprites or entire sprite batches.
     The camera can be modified using:
 
-    position: as pygame.math.Vector2, defaults to (0, 0)
+    center: as pygame.math.Vector2, defaults to (0, 0)
     rotation: as float in degree, defaults to 0
     """
 
@@ -255,32 +255,37 @@ class Camera:
         self.renderer = Renderer2D(context, 1)
 
         # set up camera
-        self.position = pygame.math.Vector2(0, 0)
+        self.center = pygame.math.Vector2(0, 0)
         self.rotation = 0.0
+        self.zoom = 1.0
 
         self._up = glm.vec3(0, 1, 0)
         self._into = glm.vec3(0, 0, 1)
+        self._screen_size = pygame.math.Vector2(pygame.display.get_window_size())
 
         self._m_view = self._get_view_matrix()
         self._m_proj = self._get_projection_matrix()
 
+    def get_size(self) -> pygame.math.Vector2:
+        return self._screen_size / self.zoom
+
     def _get_view_matrix(self) -> glm.mat4x4:
         """Return the view matrix (usually after camera moved)."""
-        size = pygame.display.get_window_size()
+        size = self.get_size()
         up_vector = glm.rotate(self._up, glm.radians(self.rotation), self._into)
-        pos = glm.vec3(*self.position.xy, 1)
-        pos.x += size[0] // 2
-        pos.y += size[1] // 2
+        pos = glm.vec3(*self.center.xy, 1)
+        #pos.x -= size[0] // 4
+        #pos.y -= size[1] // 4
         return glm.lookAt(pos, pos - self._into, up_vector)
 
-    @staticmethod
-    def _get_projection_matrix() -> glm.mat4x4:
+    def _get_projection_matrix(self) -> glm.mat4x4:
         """Return the projection matrix (usually once)."""
-        size = pygame.display.get_window_size()
+        size = self.get_size()
         return glm.ortho(-size[0] // 2, size[0] // 2, -size[1] // 2, size[1] // 2, 1, -1)
 
     def update(self) -> None:
         """Updates matrices after altering the camera or window size."""
+        self._screen_size = pygame.math.Vector2(pygame.display.get_window_size())
         self._m_view = self._get_view_matrix()
         self._m_proj = self._get_projection_matrix()
 
