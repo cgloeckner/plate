@@ -9,18 +9,14 @@ import app
 class DemoState(app.State):
     def __init__(self, engine: app.Engine):
         super().__init__(engine)
+        self.cache = app.ResourceCache(engine.context)
 
-        surface = pygame.image.load('ship.png')
-        self.tex0 = engine.context.texture(size=surface.get_size(), components=4,
-                                           data=pygame.image.tostring(surface, 'RGBA', True))
+        self.tex0 = self.cache.get_png('ship.png')
         self.tex0.filter = moderngl.NEAREST, moderngl.NEAREST
-        surface = pygame.image.load('ufo.png')
-        self.tex1 = engine.context.texture(size=surface.get_size(), components=4,
-                                           data=pygame.image.tostring(surface, 'RGBA', True))
+        self.tex1 = self.cache.get_svg('ufo.svg', scale=10)
+        print(self.tex1.size)
         self.tex1.filter = moderngl.NEAREST, moderngl.NEAREST
-        surface = pygame.image.load('tile.png')
-        self.tex2 = engine.context.texture(size=surface.get_size(), components=4,
-                                           data=pygame.image.tostring(surface, 'RGBA', True))
+        self.tex2 = self.cache.get_png('tile.png')
         self.tex2.filter = moderngl.NEAREST, moderngl.NEAREST
 
         self.camera = render.Camera(engine.context)
@@ -30,7 +26,7 @@ class DemoState(app.State):
         self.forward = pygame.math.Vector2(0, 1)
         self.right = pygame.math.Vector2(1, 0)
 
-        self.s2 = render.Sprite(self.tex1, clip=pygame.Rect(0, 0, 32, 32))
+        self.s2 = render.Sprite(self.tex1, clip=pygame.Rect(0, 0, self.tex1.size[1], self.tex1.size[1]))
         self.s2.center.y = 250
 
         self.total_ms = 0
@@ -59,8 +55,6 @@ class DemoState(app.State):
             self.engine.running = False
 
     def update(self, elapsed_ms) -> None:
-        print(elapsed_ms)
-
         self.s1.scale.x = 1 + math.sin(self.total_ms / 250) * 0.05
         self.s1.scale.y = 1 + math.sin(self.total_ms / 250) * 0.05
 
@@ -89,12 +83,13 @@ class DemoState(app.State):
         self.camera.center = self.s1.center.copy()
         self.camera.update()
 
+        self.total_ms += elapsed_ms
         pygame.display.set_caption(f'{int(self.engine.clock.get_fps())} FPS')
 
     def render(self) -> None:
         self.camera.render(self.tile)
-        self.camera.render(self.s1)
         self.camera.render(self.s2)
+        self.camera.render(self.s1)
 
 
 def main() -> None:

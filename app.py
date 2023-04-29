@@ -7,12 +7,48 @@ based on https://github.com/pyimgui/pyimgui/blob/master/doc/examples/integration
 
 import pygame
 import moderngl
+import io
+import cairosvg
 # FIXME
 # import imgui
 # from imgui.integrations.pygame import PygameRenderer
 
-from typing import Optional
+from typing import Dict, Tuple, Optional
 from abc import abstractmethod, ABC
+
+
+class ResourceCache:
+    def __init__(self, context: moderngl.Context) -> None:
+        self.context = context
+        self.png_cache: Dict[str, moderngl.Texture] = dict()
+        self.svg_cache: Dict[Tuple[str, float], moderngl.Texture] = dict()
+
+    def get_png(self, path: str) -> moderngl.Texture:
+        if path not in self.png_cache:
+            # load image file
+            surface = pygame.image.load(path)
+            img_data = pygame.image.tostring(surface, 'RGBA', True)
+
+            # load texture from surface
+            texture = self.context.texture(size=surface.get_size(), components=4, data=img_data)
+            self.png_cache[path] = texture
+
+        return self.png_cache[path]
+
+    def get_svg(self, path: str, scale: float) -> moderngl.Texture:
+        key = (path, scale)
+
+        if key not in self.svg_cache:
+            # rasterize vector graphics
+            png_data = cairosvg.svg2png(url=path, scale=scale)
+            surface = pygame.image.load(io.BytesIO(png_data))
+            img_data = pygame.image.tostring(surface, 'RGBA', True)
+
+            # load texture from surface
+            texture = self.context.texture(size=surface.get_size(), components=4, data=img_data)
+            self.svg_cache[key] = texture
+
+        return self.svg_cache[key]
 
 
 class Engine:

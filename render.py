@@ -261,7 +261,6 @@ class Camera:
 
     def _get_view_matrix(self) -> glm.mat4x4:
         """Return the view matrix (usually after camera moved)."""
-        size = self.get_size()
         up_vector = glm.rotate(self._up, glm.radians(self.rotation), self._into)
         pos = glm.vec3(*self.center.xy, 1)
         return glm.lookAt(pos, pos - self._into, up_vector)
