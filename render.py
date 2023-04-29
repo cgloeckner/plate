@@ -1,3 +1,8 @@
+"""Simple 2D OpenGL Rendering API
+
+based on https://github.com/moderngl/moderngl/blob/master/examples/geometry_shader_sprites.py
+"""
+
 import pygame
 import moderngl
 import glm
@@ -9,7 +14,6 @@ from typing import Optional, Tuple
 vertex_shader = """
 #version 330
 
-// The per sprite input data
 in vec2 in_position;
 in vec2 in_size;
 in float in_rotation;
@@ -24,7 +28,6 @@ out vec2 clip_offset;
 out vec2 clip_size;
 
 void main() {
-    // We just pass the values unmodified to the geometry shader
     gl_Position = vec4(in_position, 0, 1);
     size = in_size;
     rotation = in_rotation;
@@ -37,17 +40,12 @@ void main() {
 geometry_shader = """
 #version 330
 
-// We are taking single points form the vertex shader
-// and emitting 4 new vertices creating a quad/sprites
 layout (points) in;
 layout (triangle_strip, max_vertices = 4) out;
 
 uniform mat4 view;
 uniform mat4 projection;
 
-// Since geometry shader can take multiple values from a vertex
-// shader we need to define the inputs from it as arrays.
-// In our instance we just take single values (points)
 in vec2 size[];
 in float rotation[];
 in vec4 color[];
@@ -58,7 +56,6 @@ out vec2 uv;
 out vec4 v_color;
 
 void main() {
-    // We grab the position value from the vertex shader
     vec2 center = gl_in[0].gl_Position.xy;
 
     // Calculate the half size of the sprites for easier calculations
@@ -73,12 +70,6 @@ void main() {
         -sin(angle), cos(angle)
     );
 
-    // Emit a triangle strip creating a quad (4 vertices).
-    // Here we need to make sure the rotation is applied before we position the sprite.
-    // We just use hardcoded texture coordinates here. If an atlas is used we
-    // can pass an additional vec4 for specific texture coordinates.
-    // Each EmitVertex() emits values down the shader pipeline just like a single
-    // run of a vertex shader, but in geomtry shaders we can do it multiple times!
     // Upper left
     gl_Position = projection * view * vec4(rot * vec2(-hsize.x, hsize.y) + center, 0.0, 1.0);
     uv = vec2(clip_offset[0].x, clip_offset[0].y + clip_size[0].y);
