@@ -76,7 +76,7 @@ class Engine:
 
         # prepare mainloop
         self.clock = pygame.time.Clock()
-        self.max_fps = 200
+        self.max_fps = 800
         self.running = True
         self.queue = list()
 

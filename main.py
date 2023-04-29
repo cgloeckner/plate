@@ -2,8 +2,9 @@ import pygame
 import moderngl
 import math
 
-import render
 import app
+import render
+import particles
 
 
 class DemoState(app.State):
@@ -14,7 +15,6 @@ class DemoState(app.State):
         self.tex0 = self.cache.get_png('ship.png')
         self.tex0.filter = moderngl.NEAREST, moderngl.NEAREST
         self.tex1 = self.cache.get_svg('ufo.svg', scale=10)
-        print(self.tex1.size)
         self.tex1.filter = moderngl.NEAREST, moderngl.NEAREST
         self.tex2 = self.cache.get_png('tile.png')
         self.tex2.filter = moderngl.NEAREST, moderngl.NEAREST
@@ -28,6 +28,9 @@ class DemoState(app.State):
 
         self.s2 = render.Sprite(self.tex1, clip=pygame.Rect(0, 0, self.tex1.size[1], self.tex1.size[1]))
         self.s2.center.y = 250
+
+        self.s3 = render.Sprite(self.tex1, clip=pygame.Rect(0, 0, self.tex1.size[1], self.tex1.size[1]))
+        self.s3.center.x = 150
 
         self.total_ms = 0
 
@@ -49,6 +52,8 @@ class DemoState(app.State):
         self.tile = render.Sprite(self.tex2)
         self.tile.clip.w *= num_x
         self.tile.clip.h *= num_y
+
+        self.stars = particles.ParticleSystem(self.engine.context, 1000)
 
     def process_event(self, event: pygame.event.Event) -> None:
         if event.type == pygame.QUIT or (event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE):
@@ -83,12 +88,17 @@ class DemoState(app.State):
         self.camera.center = self.s1.center.copy()
         self.camera.update()
 
+        # no need to update stars' positions
+        # self.stars.update(elapsed_ms)
+
         self.total_ms += elapsed_ms
         pygame.display.set_caption(f'{int(self.engine.clock.get_fps())} FPS')
 
     def render(self) -> None:
-        self.camera.render(self.tile)
+        # self.camera.render(self.tile)
+        self.camera.render_particles(self.stars)
         self.camera.render(self.s2)
+        self.camera.render(self.s3)
         self.camera.render(self.s1)
 
 
