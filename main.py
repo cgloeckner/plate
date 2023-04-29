@@ -1,31 +1,23 @@
-import moderngl
 import pygame
+import moderngl
+import glm
 import random
 import math
 
-import camera
-import sprite
+import render
 
 
-def random_sprite(texture: moderngl.Texture) -> sprite.Sprite:
+def random_sprite(texture: moderngl.Texture) -> render.Sprite:
     size = pygame.display.get_window_size()
 
-    new_sprite = sprite.Sprite()
-    new_sprite.texture = texture
+    new_sprite = render.Sprite(texture, pygame.Rect(0, 0, 32, 32))
     new_sprite.color = pygame.Color(random.randrange(255), random.randrange(255), random.randrange(255))
-    new_sprite.position.x = random.randrange(size[0])
-    new_sprite.position.y = random.randrange(size[1])
+    new_sprite.pos.x = random.randrange(size[0])
+    new_sprite.pos.y = random.randrange(size[1])
     new_sprite.rotation = random.randrange(360)
-    new_sprite.scale.x = random.randrange(150) + 50
-    new_sprite.scale.y = random.randrange(150) + 50
+    new_sprite.size.x = random.randrange(150) + 50
+    new_sprite.size.y = random.randrange(150) + 50
     return new_sprite
-
-
-def modify_sprite(existing_sprite: sprite.Sprite, total_ms: int, elapsed_ms: int) -> None:
-    existing_sprite.rotation += elapsed_ms * 0.25
-    existing_sprite.scale.x += math.sin(total_ms) * 10
-    existing_sprite.scale.y += math.cos(total_ms) * 10
-    existing_sprite.color = pygame.Color(random.randrange(255), random.randrange(255), random.randrange(255))
 
 
 def main() -> None:
@@ -34,43 +26,65 @@ def main() -> None:
     pygame.display.gl_set_attribute(pygame.GL_CONTEXT_MINOR_VERSION, 3)
     pygame.display.gl_set_attribute(pygame.GL_CONTEXT_PROFILE_MASK, pygame.GL_CONTEXT_PROFILE_CORE)
 
-    pygame.display.set_mode((1600, 900), flags=pygame.OPENGL | pygame.DOUBLEBUF)
+    size = (1600, 900)
+    pygame.display.set_mode(size, flags=pygame.OPENGL | pygame.DOUBLEBUF)
     context = moderngl.create_context()
     context.enable(moderngl.BLEND)  # required for alpha stuff
     clock = pygame.time.Clock()
 
-    tex = sprite.texture_from_surface(context, pygame.image.load('ship.png'))
-    tex.filter = moderngl.NEAREST, moderngl.NEAREST
+    surface = pygame.image.load('ship.png')
+    tex0 = context.texture(size=surface.get_size(), components=4, data=pygame.image.tostring(surface, 'RGBA', True))
+    surface = pygame.image.load('ufo.png')
+    tex1 = context.texture(size=surface.get_size(), components=4, data=pygame.image.tostring(surface, 'RGBA', True))
+    surface = pygame.image.load('tile.png')
+    tex2 = context.texture(size=surface.get_size(), components=4, data=pygame.image.tostring(surface, 'RGBA', True))
 
-    sprite_list = [random_sprite(tex) for _ in range(1000)]
+    camera = render.Camera(context)
 
-    cam = camera.Camera()
-    #cam.position.x = 0.25
-    #cam.position.y = -0.5
-    #cam.rotation = -22.0
-    cam.update()
+    s1 = render.Sprite(tex0, clip=pygame.Rect(0, 0, 32, 32))
+    s1.pos.x = size[0] // 2
+    s1.pos.y = size[1] // 2
 
-    render_context = sprite.RenderContext(context, cam)
+    s2 = render.Sprite(tex1, clip=pygame.Rect(0, 0, 32, 32))
+    s2.pos.x = size[0] // 2
+    s2.pos.y = size[1] // 4 * 3
+
+    sprites = [random_sprite(tex2) for _ in range(3000)]
+
+    batch = render.Batch(context, len(sprites))
+    for s in sprites:
+        batch.append(s)
 
     max_fps = 600
     elapsed_ms = 0
-    total_ms = 0
     running = True
     while running:
         for event in pygame.event.get():
             if event.type == pygame.QUIT or (event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE):
                 running = False
 
+        camera.update()
+        keys = pygame.key.get_pressed()
+        if keys[pygame.K_a]:
+            camera.position.x -= 0.25 * elapsed_ms
+        if keys[pygame.K_d]:
+            camera.position.x += 0.25 * elapsed_ms
+        if keys[pygame.K_s]:
+            camera.position.y -= 0.25 * elapsed_ms
+        if keys[pygame.K_w]:
+            camera.position.y += 0.25 * elapsed_ms
+        if keys[pygame.K_q]:
+            camera.rotation += 0.1 * elapsed_ms
+        if keys[pygame.K_e]:
+            camera.rotation -= 0.1 * elapsed_ms
+
         context.clear(color=(0.08, 0.16, 0.18, 0.0))
-
-        for s in sprite_list:
-            modify_sprite(s, total_ms, elapsed_ms)
-            s.render(render_context)
-
+        camera.render_batch(batch)
+        camera.render(s1)
+        camera.render(s2)
         pygame.display.flip()
 
         elapsed_ms = clock.tick(max_fps)
-        total_ms += elapsed_ms
         pygame.display.set_caption(f'{int(clock.get_fps())} FPS')
 
     pygame.quit()

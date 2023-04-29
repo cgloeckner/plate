@@ -1,4 +1,3 @@
+pygame~=2.3.0
 moderngl~=5.8.2
-pygame-ce~=2.2.1
-numpy~=1.24.3
 PyGLM~=2.7.0
