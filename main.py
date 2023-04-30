@@ -62,8 +62,13 @@ class DemoState(app.State):
             pos += self.camera.center
             pos.x -= size[0] // 2
             pos.y -= size[1] // 2
+
+            impact = self.s1.center - pos
+            impact.normalize_ip()
+
             color = pygame.Color(random.randrange(255), random.randrange(255), random.randrange(255))
-            self.parts.emit(pos, 5.0, 20.0, color, 100)
+
+            self.parts.emit(impact, 0, pos, 5.0, 20.0, color, 100)
 
     def update(self, elapsed_ms) -> None:
         self.s1.scale.x = 1 + math.sin(self.total_ms / 250) * 0.05

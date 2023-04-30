@@ -113,7 +113,8 @@ void main() {
 """
 
 
-def create_particle(origin: pygame.math.Vector2, radius: float, speed: float, color: pygame.Color) -> Tuple[float, ...]:
+def create_particle(impact: pygame.math.Vector2, delta_degree: float, origin: pygame.math.Vector2, radius: float,
+                    speed: float, color: pygame.Color) -> Tuple[float, ...]:
     """The particle starts at the given origin with a radius and a color, and is moved into a random direction.
 
     This normalizes the color.
@@ -121,7 +122,8 @@ def create_particle(origin: pygame.math.Vector2, radius: float, speed: float, co
     x, y = origin
     x += random.random() * 2 * radius - 1
     y += random.random() * 2 * radius - 1
-    direction = pygame.math.Vector2(0, 1).rotate(random.randrange(0, 360))
+    angle = random.randrange(delta_degree, 360-delta_degree)
+    direction = impact.rotate(angle)
     direction *= random.random() * speed * 2 + 0.01
     color_tuple = color.normalize()
     return x, y, direction.x, direction.y, radius, 1 + random.random(), *color_tuple
@@ -149,10 +151,10 @@ class ParticleSystem:
         self.data = array.array('f')
         self.num_particles = 0
 
-    def emit(self, origin: pygame.math.Vector2, radius: float, speed: float, color: pygame.Color,
-             count: int = 1) -> None:
+    def emit(self, impact: pygame.math.Vector2, delta_angle: float, origin: pygame.math.Vector2, radius: float,
+             speed: float, color: pygame.Color, count: int = 1) -> None:
         for _ in range(count):
-            self.data.extend(create_particle(origin, radius, speed, color))
+            self.data.extend(create_particle(impact, delta_angle, origin, radius, speed, color))
         self.num_particles += count
 
     def get_particle_count(self) -> int:
