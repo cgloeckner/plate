@@ -52,12 +52,10 @@ class DemoState(app.State):
         self.parts = particles.ParticleSystem(self.engine.context, 5000, 128)
 
     def emit_particles(self) -> None:
-        size = pygame.display.get_window_size()
-        pos = pygame.math.Vector2(pygame.mouse.get_pos())
+        size = self.camera.get_rect().size
+        pos = pygame.math.Vector2(pygame.mouse.get_pos()) / self.camera.zoom
         pos.y = size[1] - pos.y
-        pos += self.camera.center
-        pos.x -= size[0] // 2
-        pos.y -= size[1] // 2
+        pos += self.camera.get_rect().topleft
 
         impact = self.s1.center - pos
         impact.normalize_ip()
@@ -71,13 +69,13 @@ class DemoState(app.State):
             self.engine.running = False
 
         if event.type == pygame.MOUSEBUTTONUP:
-            self.emit_particles()
-
             self.s1.brightness = 5.0
+            self.emit_particles()
 
     def update(self, elapsed_ms) -> None:
         self.s1.scale.x = 1 + math.sin(self.total_ms / 250) * 0.05
         self.s1.scale.y = 1 + math.sin(self.total_ms / 250) * 0.05
+
         if self.s1.brightness > 1.0:
             self.s1.brightness -= 0.01 * elapsed_ms
             if self.s1.brightness < 1.0:

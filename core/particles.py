@@ -53,6 +53,8 @@ out vec2 uv;
 out vec4 v_color;
 
 void main() {
+    v_color = color[0];
+    
     vec2 center = gl_in[0].gl_Position.xy;
     float step = size[0] * scale[0] / 2;
 
@@ -60,28 +62,24 @@ void main() {
     gl_Position = projection * view * vec4(vec2(-step, step) + center, 0.0, 1.0);
     out_scale = scale[0];
     uv = vec2(0.0, 1.0);
-    v_color = color[0];
     EmitVertex();
 
     // lower left
     gl_Position = projection * view * vec4(vec2(-step, -step) + center, 0.0, 1.0);
     out_scale = scale[0];
     uv = vec2(0.0, 0.0);
-    v_color = color[0];
     EmitVertex();
 
     // upper right
     gl_Position = projection * view * vec4(vec2(step, step) + center, 0.0, 1.0);
     out_scale = scale[0];
     uv = vec2(1.0, 1.0);
-    v_color = color[0];
     EmitVertex();
 
     // lower right
     gl_Position = projection * view * vec4(vec2(step, -step) + center, 0.0, 1.0);
     out_scale = scale[0];
     uv = vec2(1.0, 0.0);
-    v_color = color[0];
     EmitVertex();
 
     EndPrimitive();
@@ -100,15 +98,8 @@ uniform sampler2D sprite_texture;
 out vec4 frag_color;
 
 void main() {
-    float f_scale = scale;
-    if (f_scale > 1.0) {
-        f_scale = 1.0;
-    }
-    if (f_scale < 0.0) {
-        f_scale = 0.0;
-    }
     vec4 tex_color = v_color * texture(sprite_texture, uv);
-    frag_color = vec4(tex_color.rgb, 1.0 - f_scale);
+    frag_color = vec4(tex_color.rgb, 1.0 - clamp(scale, 0.0, 1.0));
 }
 """
 

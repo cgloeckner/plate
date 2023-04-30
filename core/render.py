@@ -63,10 +63,11 @@ out vec4 v_color;
 out float v_brightness;
 
 void main() {
+    v_color = color[0];
+    v_brightness = brightness[0];
+    
     vec2 center = gl_in[0].gl_Position.xy;
-
-    // Calculate the half size of the sprites for easier calculations
-    vec2 hsize = size[0] / 2.0;
+    vec2 half_size = size[0] / 2.0;
 
     // Convert the rotation to radians
     float angle = radians(rotation[0]);
@@ -78,34 +79,25 @@ void main() {
     );
 
     // Upper left
-    gl_Position = projection * view * vec4(rot * vec2(-hsize.x, hsize.y) + center, 0.0, 1.0);
+    gl_Position = projection * view * vec4(rot * vec2(-half_size.x, half_size.y) + center, 0.0, 1.0);
     uv = vec2(clip_offset[0].x, clip_offset[0].y + clip_size[0].y);
-    v_color = color[0];
-    v_brightness = brightness[0];
     EmitVertex();
 
     // lower left
-    gl_Position = projection * view * vec4(rot * vec2(-hsize.x, -hsize.y) + center, 0.0, 1.0);
+    gl_Position = projection * view * vec4(rot * vec2(-half_size.x, -half_size.y) + center, 0.0, 1.0);
     uv = clip_offset[0].xy;
-    v_color = color[0];
-    v_brightness = brightness[0];
     EmitVertex();
 
     // upper right
-    gl_Position = projection * view * vec4(rot * vec2(hsize.x, hsize.y) + center, 0.0, 1.0);
+    gl_Position = projection * view * vec4(rot * vec2(half_size.x, half_size.y) + center, 0.0, 1.0);
     uv = vec2(clip_offset[0].x + clip_size[0].x, clip_offset[0].y + clip_size[0].y);
-    v_color = color[0];
-    v_brightness = brightness[0];
     EmitVertex();
 
     // lower right
-    gl_Position = projection * view * vec4(rot * vec2(hsize.x, -hsize.y) + center, 0.0, 1.0);
+    gl_Position = projection * view * vec4(rot * vec2(half_size.x, -half_size.y) + center, 0.0, 1.0);
     uv = vec2(clip_offset[0].x + clip_size[0].x, clip_offset[0].y);
-    v_color = color[0];
-    v_brightness = brightness[0];
     EmitVertex();
 
-    // We are done with this triangle strip now
     EndPrimitive();
 }
 """
@@ -123,8 +115,7 @@ out vec4 frag_color;
 
 void main() {
     vec4 tex_color = v_color * texture(sprite_texture, uv);
-    vec3 color = tex_color.rgb * tex_color.a;
-    frag_color = vec4(color.rgb * v_brightness, tex_color.a);
+    frag_color = vec4(tex_color.rgb * v_brightness, tex_color.a);
 }
 """
 
@@ -177,6 +168,7 @@ class Sprite:
     color: as pygame.Color
     texture: as provided
     clip: as pygame.Rect in pixel coordinates
+    brightness: as float, defaults to 1.0
     """
 
     def __init__(self, texture: moderngl.Texture, clip: Optional[pygame.Rect] = None):
