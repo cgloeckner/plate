@@ -1,9 +1,29 @@
 import pygame
 import moderngl
-import math
 import random
 
+from typing import Optional
+
 from core import app, resources, particles, render
+
+
+class Text:
+    def __init__(self, context: moderngl.Context):
+        self.context = context
+        self.font = pygame.font.SysFont(pygame.font.get_default_font(), 36)
+        self.sprite: Optional[render.Sprite] = None
+
+    def update(self, num_fps: int) -> None:
+        if self.sprite is not None:
+            self.sprite.texture.release()
+
+        surface = self.font.render(f'{num_fps}', False, 'white')
+        img_data = pygame.image.tostring(surface, 'RGBA', True)
+        texture = self.context.texture(size=surface.get_size(), components=4, data=img_data)
+        texture.filter = moderngl.NEAREST, moderngl.NEAREST
+        self.sprite = render.Sprite(texture)
+        self.sprite.center.x = texture.size[0] // 2
+        self.sprite.center.y = texture.size[1] // 2
 
 
 class DemoState(app.State):
@@ -19,6 +39,7 @@ class DemoState(app.State):
         self.tex2.filter = moderngl.NEAREST, moderngl.NEAREST
 
         self.camera = render.Camera(engine.context, self.cache)
+        self.gui = render.GuiCamera(engine.context, self.cache)
 
         self.s1 = render.Sprite(self.tex0, clip=pygame.Rect(0, 0, 32, 32))
 
@@ -31,27 +52,25 @@ class DemoState(app.State):
         self.s3 = render.Sprite(self.tex1, clip=pygame.Rect(0, 0, self.tex1.size[1], self.tex1.size[1]))
         self.s3.center.x = 150
 
-        self.asteroids = [render.Sprite(self.tex2) for _ in range(20)]
-        for ast in self.asteroids:
-            ast.center.x = random.randrange(0, 1600)
-            ast.center.y = random.randrange(0, 900)
-            ast.direction = pygame.math.Vector2()
-            ast.direction.x = random.uniform(-1.0, 1.0)
-            ast.direction.y = random.uniform(-1.0, 1.0)
-            ast.angle = random.uniform(0.0, 5.0)
+        self.asteroids_batch = render.Batch(self.engine.context, self.cache, 1000)
+        for _ in range(1000):
+            s = render.Sprite(self.tex2)
+            s.center.x = random.randrange(0, 1600 * 10)
+            s.center.y = random.randrange(0, 900 * 10)
+            s.rotation = random.uniform(0.0, 360.0)
+            s.scale *= random.uniform(0.5, 4.0)
+            self.asteroids_batch.append(s)
 
         self.v1 = pygame.math.Vector2(0, 0)
 
-        self.total_ms = 0
-
         w, h = pygame.display.get_window_size()
         stars_surface = pygame.Surface((w, h))
-        for _ in range(int((w * h) ** 0.5)):
+        for _ in range(int(min(w, h) ** 0.5)):
             x = random.randrange(w)
             y = random.randrange(h)
             v = random.randrange(255)
             color = pygame.Color(v, v, v, 255)
-            pygame.draw.rect(stars_surface, color, (x, y, 1.0, 1.0))
+            pygame.draw.circle(stars_surface, color, (x, y), 2.0)
 
         stars_img_data = pygame.image.tostring(stars_surface, 'RGBA', True)
         self.stars_texture = self.engine.context.texture(size=stars_surface.get_size(), components=4,
@@ -64,22 +83,9 @@ class DemoState(app.State):
 
         self.parts = particles.ParticleSystem(self.engine.context, self.cache, 5000, 128)
 
-    def emit_particles(self) -> None:
-        size = self.camera.get_rect().size
-        pos = pygame.math.Vector2(pygame.mouse.get_pos())
-        pos /= self.camera.zoom
-        pos.y = size[1] - pos.y
-        pos += self.camera.get_rect().topleft
-        pos.rotate_ip(self.camera.rotation)
-        pos = self.s1.center.copy()
+        self.total_ms = 0
 
-        #impact = self.s1.center - pos
-        #impact.normalize_ip()
-        impact = self.forward.rotate(self.s1.rotation)
-
-        color = pygame.Color(random.randrange(255), random.randrange(255), random.randrange(255))
-
-        self.parts.emit(100, impact, 135, pos, 5.0, 20.0, color)
+        self.fps = Text(self.engine.context)
 
     def process_event(self, event: pygame.event.Event) -> None:
         if event.type == pygame.QUIT or (event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE):
@@ -87,7 +93,6 @@ class DemoState(app.State):
 
         if event.type == pygame.MOUSEBUTTONUP:
             self.s1.brightness = 5.0
-            self.emit_particles()
 
     def update(self, elapsed_ms) -> None:
         if self.s1.brightness > 1.0:
@@ -95,24 +100,23 @@ class DemoState(app.State):
             if self.s1.brightness < 1.0:
                 self.s1.brightness = 1.0
 
-        for ast in self.asteroids:
-            ast.center += ast.direction * 0.05 * elapsed_ms
-            ast.rotation += ast.angle * 0.05 * elapsed_ms
+        for index in range(self.asteroids_batch.renderer.max_num_sprites):
+            self.asteroids_batch.renderer.data[index * 14] += elapsed_ms * 0.01
+            self.asteroids_batch.renderer.data[index * 14 + 1] += elapsed_ms * 0.01
+            self.asteroids_batch.renderer.data[index * 14 + 4] += elapsed_ms * 0.01
 
         keys = pygame.key.get_pressed()
-        binding = {
-            #pygame.K_a: -self.right, pygame.K_d: self.right,
-            pygame.K_w: self.forward, pygame.K_s: -self.forward
-        }
-
-        for key in binding:
-            if keys[key]:
-                self.v1 += binding[key].rotate(self.camera.rotation) * 0.0005 * elapsed_ms
 
         if keys[pygame.K_w]:
+            self.v1 = self.forward.rotate(self.camera.rotation) * 0.5 * elapsed_ms
+
             impact = self.forward.rotate(self.s1.rotation)
             pos = self.s1.center.copy() - impact * 32
             self.parts.emit(1, impact, 170, pos, 5.0, 20.0, pygame.Color('orange'))
+
+        if keys[pygame.K_s]:
+            # slow down
+            self.v1 *= (1 - 0.001 * elapsed_ms)
 
         if keys[pygame.K_q]:
             self.camera.rotation += 0.05 * elapsed_ms
@@ -128,9 +132,7 @@ class DemoState(app.State):
             if self.camera.zoom < 0.1:
                 self.camera.zoom = 0.1
 
-        if self.v1.length() > 1:
-            self.v1 = self.v1.normalize() * 1
-        self.v1 *= (1 - 0.0001 * elapsed_ms)
+        self.v1 *= (1 - 0.001 * elapsed_ms)
 
         self.s1.rotation = self.camera.rotation
         self.s1.center += self.v1
@@ -139,19 +141,24 @@ class DemoState(app.State):
         self.camera.update()
 
         self.parts.update(elapsed_ms)
-        num_parts = self.parts.get_particle_count()
 
         self.total_ms += elapsed_ms
-        pygame.display.set_caption(f'{int(self.engine.clock.get_fps())} FPS | {num_parts} Particles')
+        num_fps = int(self.engine.clock.get_fps())
+        if self.total_ms > 250:
+            pygame.display.set_caption(f'{int(self.engine.clock.get_fps())} FPS')
+            self.fps.update(num_fps)
+            self.total_ms -= 250
 
     def render(self) -> None:
         self.camera.render(self.tile)
         self.camera.render_particles(self.parts)
-        for ast in self.asteroids:
-            self.camera.render(ast)
+        self.camera.render_batch(self.asteroids_batch)
         self.camera.render(self.s2)
         self.camera.render(self.s3)
         self.camera.render(self.s1)
+
+        if self.fps.sprite is not None:
+            self.gui.render(self.fps.sprite)
 
 
 def main() -> None:

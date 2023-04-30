@@ -30,6 +30,7 @@ class Renderer2D:
                                           'in_color', 'in_clip_offset', 'in_clip_size', 'in_brightness')])
 
         self.data = array.array('f')
+        self.max_num_sprites = max_num_sprites
         self.num_sprites = 0
 
     def clear(self) -> None:
@@ -188,3 +189,13 @@ class Camera:
     def render_particles(self, parts: particles.ParticleSystem) -> None:
         """Render the given particles."""
         parts.render(self._m_view, self._m_proj)
+
+
+class GuiCamera(Camera):
+    def __init__(self, context: moderngl.Context, cache: resources.Cache) -> None:
+        super().__init__(context, cache)
+
+    def _get_projection_matrix(self) -> glm.mat4x4:
+        """Return the projection matrix (usually once)."""
+        size = self.get_size()
+        return glm.ortho(0, size[0], 0, size[1], 1, -1)
