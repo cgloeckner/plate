@@ -43,7 +43,8 @@ class DemoState(app.State):
             pygame.draw.rect(stars_surface, color, (x, y, 1.0, 1.0))
 
         stars_img_data = pygame.image.tostring(stars_surface, 'RGBA', True)
-        self.stars_texture = self.engine.context.texture(size=stars_surface.get_size(), components=4, data=stars_img_data)
+        self.stars_texture = self.engine.context.texture(size=stars_surface.get_size(), components=4,
+                                                         data=stars_img_data)
 
         self.tile = render.Sprite(self.stars_texture)
         self.tile.clip.w *= 10
@@ -62,11 +63,11 @@ class DemoState(app.State):
 
         color = pygame.Color(random.randrange(255), random.randrange(255), random.randrange(255))
 
-        self.parts.emit(impact, 0, pos, 5.0, 20.0, color, 100)
+        self.parts.emit(100, impact, 45, pos, 5.0, 20.0, color)
 
     def process_event(self, event: pygame.event.Event) -> None:
         if event.type == pygame.QUIT or (event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE):
-            self.engine.running = False
+            self.engine.pop()
 
         if event.type == pygame.MOUSEBUTTONUP:
             self.s1.brightness = 5.0

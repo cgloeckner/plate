@@ -18,12 +18,16 @@ from abc import abstractmethod, ABC
 
 
 class ResourceCache:
+    """Manages loading and caching data from disk."""
+
     def __init__(self, context: moderngl.Context) -> None:
+        """Initializes the resource caches."""
         self.context = context
         self.png_cache: Dict[str, moderngl.Texture] = dict()
         self.svg_cache: Dict[Tuple[str, float], moderngl.Texture] = dict()
 
     def get_png(self, path: str) -> moderngl.Texture:
+        """Loads a PNG file from path and returns the corresponding texture."""
         if path not in self.png_cache:
             # load image file
             surface = pygame.image.load(path)
@@ -36,6 +40,7 @@ class ResourceCache:
         return self.png_cache[path]
 
     def get_svg(self, path: str, scale: float) -> moderngl.Texture:
+        """Loads a SVG file from path, scaling it as provided and returns the corresponding texture."""
         key = (path, scale)
 
         if key not in self.svg_cache:
@@ -51,9 +56,18 @@ class ResourceCache:
         return self.svg_cache[key]
 
 
+# ----------------------------------------------------------------------------------------------------------------------
+
+
 class Engine:
+    """Manages the mainloop and holds a stack of game states, where the top one is handled until it quits."""
+
     def __init__(self, width: float, height: float, ini_file: Optional[str] = None,
                  log_file: Optional[str] = None) -> None:
+        """Create window and opengl context from the given resolution.
+
+        FIXME: document ini_file and log_file as soon as imgui works
+        """
         # setup pygame to work with opengl
         pygame.init()
         pygame.display.gl_set_attribute(pygame.GL_CONTEXT_MAJOR_VERSION, 3)
@@ -68,33 +82,43 @@ class Engine:
         # prepare imgui
         # FIXME
         # imgui.create_context()
-        # self.impl = PygameRenderer()
-        # self.io = imgui.get_io()
-        # self.io.display_size = (width, height)
-        # self.io.ini_file_name = ini_file
-        # self.io.log_file_name = log_file
+        # self._impl = PygameRenderer()
+        # self.imgui_io = imgui.get_io()
+        # self.imgui_io.display_size = (width, height)
+        # self.imgui_io.ini_file_name = ini_file
+        # self.imgui_io.log_file_name = log_file
 
         # prepare mainloop
         self.clock = pygame.time.Clock()
         self.max_fps = 800
-        self.running = True
-        self.queue = list()
+        self._queue = list()
 
     def __del__(self):
+        """Quit pygame when the engine is destroyed."""
         pygame.quit()
 
     def push(self, state: 'State') -> None:
-        self.queue.append(state)
+        """Push the given state to the stack, so it will be processed as soon as possible."""
+        self._queue.append(state)
+
+    def pop(self) -> None:
+        """Pops the current state from the stack."""
+        self._queue.pop()
 
     def run(self) -> None:
-        while self.running:
+        """Mainloop that forwards events, updates and renders the game state."""
+        while True:
             # grab top state
-            state = self.queue[-1]
+            try:
+                state = self._queue[-1]
+            except IndexError:
+                # quit mainloop
+                break
 
             # handle events
             for event in pygame.event.get():
                 # FIXME
-                # self.impl.process_event(event)
+                # self._impl.process_event(event)
                 state.process_event(event)
 
             # update app logic
@@ -108,11 +132,13 @@ class Engine:
             state.render()
             # FIXME
             # imgui.render()
-            # self.impl.render(imgui.get_draw_data())
+            # self._impl.render(imgui.get_draw_data())
             pygame.display.flip()
 
 
 class State(ABC):
+    """Abstract state class. Derive to create a custom game state (e.g. pause screen)."""
+
     def __init__(self, engine: Engine) -> None:
         self.engine = engine
 

@@ -148,7 +148,6 @@ class Renderer2D:
         self.vbo.write(self.data)
 
         texture.use(0)
-        # FIXME:
         self.program['view'].write(view_matrix)
         self.program['projection'].write(projection_matrix)
         self.program['sprite_texture'] = 0
