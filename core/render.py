@@ -10,7 +10,7 @@ import array
 
 from typing import Optional, Tuple
 
-import particles
+from . import particles
 
 
 vertex_shader = """
@@ -289,6 +289,6 @@ class Camera:
         """Render the given batch."""
         batch.renderer.render(batch.last_texture, self._m_view, self._m_proj)
 
-    def render_particles(self, particles: particles.ParticleSystem) -> None:
+    def render_particles(self, parts: particles.ParticleSystem) -> None:
         """Render the given particles."""
-        particles.render(self._m_view, self._m_proj)
+        parts.render(self._m_view, self._m_proj)

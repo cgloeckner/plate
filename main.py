@@ -2,9 +2,7 @@ import pygame
 import moderngl
 import math
 
-import app
-import render
-import particles
+from core import app, particles, render
 
 
 class DemoState(app.State):
