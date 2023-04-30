@@ -22,12 +22,14 @@ in float in_rotation;
 in vec4 in_color;
 in vec2 in_clip_offset;
 in vec2 in_clip_size;
+in float in_brightness;
 
 out vec2 size;
 out float rotation;
 out vec4 color;
 out vec2 clip_offset;
 out vec2 clip_size;
+out float brightness;
 
 void main() {
     gl_Position = vec4(in_position, 0, 1);
@@ -36,6 +38,7 @@ void main() {
     color = in_color;
     clip_offset = in_clip_offset;
     clip_size = in_clip_size;
+    brightness = in_brightness;
 }
 """
 
@@ -53,9 +56,11 @@ in float rotation[];
 in vec4 color[];
 in vec2 clip_offset[];
 in vec2 clip_size[];
+in float brightness[];
 
 out vec2 uv;
 out vec4 v_color;
+out float v_brightness;
 
 void main() {
     vec2 center = gl_in[0].gl_Position.xy;
@@ -76,24 +81,28 @@ void main() {
     gl_Position = projection * view * vec4(rot * vec2(-hsize.x, hsize.y) + center, 0.0, 1.0);
     uv = vec2(clip_offset[0].x, clip_offset[0].y + clip_size[0].y);
     v_color = color[0];
+    v_brightness = brightness[0];
     EmitVertex();
 
     // lower left
     gl_Position = projection * view * vec4(rot * vec2(-hsize.x, -hsize.y) + center, 0.0, 1.0);
     uv = clip_offset[0].xy;
     v_color = color[0];
+    v_brightness = brightness[0];
     EmitVertex();
 
     // upper right
     gl_Position = projection * view * vec4(rot * vec2(hsize.x, hsize.y) + center, 0.0, 1.0);
     uv = vec2(clip_offset[0].x + clip_size[0].x, clip_offset[0].y + clip_size[0].y);
     v_color = color[0];
+    v_brightness = brightness[0];
     EmitVertex();
 
     // lower right
     gl_Position = projection * view * vec4(rot * vec2(hsize.x, -hsize.y) + center, 0.0, 1.0);
     uv = vec2(clip_offset[0].x + clip_size[0].x, clip_offset[0].y);
     v_color = color[0];
+    v_brightness = brightness[0];
     EmitVertex();
 
     // We are done with this triangle strip now
@@ -108,13 +117,14 @@ uniform sampler2D sprite_texture;
 
 in vec2 uv;
 in vec4 v_color;
+in float v_brightness;
 
 out vec4 frag_color;
 
 void main() {
     vec4 tex_color = v_color * texture(sprite_texture, uv);
     vec3 color = tex_color.rgb * tex_color.a;
-    frag_color = vec4(color, tex_color.a);
+    frag_color = vec4(color.rgb * v_brightness, tex_color.a);
 }
 """
 
@@ -125,14 +135,14 @@ class Renderer2D:
     def __init__(self, context: moderngl.Context, max_num_sprites: int) -> None:
         """Initializes buffers for a maximum number of sprites."""
         self.context = context
-        self.vbo = context.buffer(reserve=13 * 4 * max_num_sprites)
+        self.vbo = context.buffer(reserve=14 * 4 * max_num_sprites)
 
         self.program = context.program(vertex_shader=vertex_shader, geometry_shader=geometry_shader,
                                        fragment_shader=fragment_shader)
 
         self.vao = context.vertex_array(self.program,
-                                        [(self.vbo, '2f 2f 1f 4f 2f 2f', 'in_position', 'in_size', 'in_rotation',
-                                          'in_color', 'in_clip_offset', 'in_clip_size')])
+                                        [(self.vbo, '2f 2f 1f 4f 2f 2f 1f', 'in_position', 'in_size', 'in_rotation',
+                                          'in_color', 'in_clip_offset', 'in_clip_size', 'in_brightness')])
 
         self.data = array.array('f')
         self.num_sprites = 0
@@ -175,6 +185,7 @@ class Sprite:
         self.scale = pygame.math.Vector2(1, 1)
         self.rotation = 0.0
         self.color = pygame.Color('white')
+        self.brightness = 1.0
         self.clip = pygame.Rect(0, 0, *texture.size) if clip is None else clip
         self.texture = texture
 
@@ -185,7 +196,7 @@ class Sprite:
         tex_size = pygame.math.Vector2(self.texture.size)
         clip_xy = pygame.math.Vector2(self.clip.topleft).elementwise() / tex_size
         clip_wh = pygame.math.Vector2(self.clip.size).elementwise() / tex_size
-        return *self.center, *size, self.rotation, *color, *clip_xy, *clip_wh
+        return *self.center, *size, self.rotation, *color, *clip_xy, *clip_wh, self.brightness
 
 
 # ----------------------------------------------------------------------------------------------------------------------

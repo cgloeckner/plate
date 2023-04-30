@@ -51,28 +51,37 @@ class DemoState(app.State):
 
         self.parts = particles.ParticleSystem(self.engine.context, 5000, 128)
 
+    def emit_particles(self) -> None:
+        size = pygame.display.get_window_size()
+        pos = pygame.math.Vector2(pygame.mouse.get_pos())
+        pos.y = size[1] - pos.y
+        pos += self.camera.center
+        pos.x -= size[0] // 2
+        pos.y -= size[1] // 2
+
+        impact = self.s1.center - pos
+        impact.normalize_ip()
+
+        color = pygame.Color(random.randrange(255), random.randrange(255), random.randrange(255))
+
+        self.parts.emit(impact, 0, pos, 5.0, 20.0, color, 100)
+
     def process_event(self, event: pygame.event.Event) -> None:
         if event.type == pygame.QUIT or (event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE):
             self.engine.running = False
 
         if event.type == pygame.MOUSEBUTTONUP:
-            size = pygame.display.get_window_size()
-            pos = pygame.math.Vector2(pygame.mouse.get_pos())
-            pos.y = size[1] - pos.y
-            pos += self.camera.center
-            pos.x -= size[0] // 2
-            pos.y -= size[1] // 2
+            self.emit_particles()
 
-            impact = self.s1.center - pos
-            impact.normalize_ip()
-
-            color = pygame.Color(random.randrange(255), random.randrange(255), random.randrange(255))
-
-            self.parts.emit(impact, 0, pos, 5.0, 20.0, color, 100)
+            self.s1.brightness = 5.0
 
     def update(self, elapsed_ms) -> None:
         self.s1.scale.x = 1 + math.sin(self.total_ms / 250) * 0.05
         self.s1.scale.y = 1 + math.sin(self.total_ms / 250) * 0.05
+        if self.s1.brightness > 1.0:
+            self.s1.brightness -= 0.01 * elapsed_ms
+            if self.s1.brightness < 1.0:
+                self.s1.brightness = 1.0
 
         keys = pygame.key.get_pressed()
         if keys[pygame.K_a]:
