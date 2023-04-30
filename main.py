@@ -51,7 +51,8 @@ class DemoState(app.State):
         self.tile.clip.w *= num_x
         self.tile.clip.h *= num_y
 
-        self.stars = particles.ParticleSystem(self.engine.context, 1000)
+        self.parts = particles.ParticleSystem(self.engine.context, 1000)
+        self.parts.emit(pygame.math.Vector2(0, 0), 10.0, pygame.Color('green'), 100)
 
     def process_event(self, event: pygame.event.Event) -> None:
         if event.type == pygame.QUIT or (event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE):
@@ -87,14 +88,14 @@ class DemoState(app.State):
         self.camera.update()
 
         # no need to update stars' positions
-        # self.stars.update(elapsed_ms)
+        self.parts.update(elapsed_ms)
 
         self.total_ms += elapsed_ms
         pygame.display.set_caption(f'{int(self.engine.clock.get_fps())} FPS')
 
     def render(self) -> None:
         # self.camera.render(self.tile)
-        self.camera.render_particles(self.stars)
+        self.camera.render_particles(self.parts)
         self.camera.render(self.s2)
         self.camera.render(self.s3)
         self.camera.render(self.s1)
