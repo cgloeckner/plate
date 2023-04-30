@@ -10,126 +10,20 @@ import array
 
 from typing import Optional, Tuple
 
-from . import particles
-
-
-vertex_shader = """
-#version 330
-
-in vec2 in_position;
-in vec2 in_size;
-in float in_rotation;
-in vec4 in_color;
-in vec2 in_clip_offset;
-in vec2 in_clip_size;
-in float in_brightness;
-
-out vec2 size;
-out float rotation;
-out vec4 color;
-out vec2 clip_offset;
-out vec2 clip_size;
-out float brightness;
-
-void main() {
-    gl_Position = vec4(in_position, 0, 1);
-    size = in_size;
-    rotation = in_rotation;
-    color = in_color;
-    clip_offset = in_clip_offset;
-    clip_size = in_clip_size;
-    brightness = in_brightness;
-}
-"""
-
-geometry_shader = """
-#version 330
-
-layout (points) in;
-layout (triangle_strip, max_vertices = 4) out;
-
-uniform mat4 view;
-uniform mat4 projection;
-
-in vec2 size[];
-in float rotation[];
-in vec4 color[];
-in vec2 clip_offset[];
-in vec2 clip_size[];
-in float brightness[];
-
-out vec2 uv;
-out vec4 v_color;
-out float v_brightness;
-
-void main() {
-    v_color = color[0];
-    v_brightness = brightness[0];
-    
-    vec2 center = gl_in[0].gl_Position.xy;
-    vec2 half_size = size[0] / 2.0;
-
-    // Convert the rotation to radians
-    float angle = radians(rotation[0]);
-
-    // Create a 2d rotation matrix
-    mat2 rot = mat2(
-        cos(angle), sin(angle),
-        -sin(angle), cos(angle)
-    );
-
-    // Upper left
-    gl_Position = projection * view * vec4(rot * vec2(-half_size.x, half_size.y) + center, 0.0, 1.0);
-    uv = vec2(clip_offset[0].x, clip_offset[0].y + clip_size[0].y);
-    EmitVertex();
-
-    // lower left
-    gl_Position = projection * view * vec4(rot * vec2(-half_size.x, -half_size.y) + center, 0.0, 1.0);
-    uv = clip_offset[0].xy;
-    EmitVertex();
-
-    // upper right
-    gl_Position = projection * view * vec4(rot * vec2(half_size.x, half_size.y) + center, 0.0, 1.0);
-    uv = vec2(clip_offset[0].x + clip_size[0].x, clip_offset[0].y + clip_size[0].y);
-    EmitVertex();
-
-    // lower right
-    gl_Position = projection * view * vec4(rot * vec2(half_size.x, -half_size.y) + center, 0.0, 1.0);
-    uv = vec2(clip_offset[0].x + clip_size[0].x, clip_offset[0].y);
-    EmitVertex();
-
-    EndPrimitive();
-}
-"""
-
-fragment_shader = """
-#version 330
-
-uniform sampler2D sprite_texture;
-
-in vec2 uv;
-in vec4 v_color;
-in float v_brightness;
-
-out vec4 frag_color;
-
-void main() {
-    vec4 tex_color = v_color * texture(sprite_texture, uv);
-    frag_color = vec4(tex_color.rgb * v_brightness, tex_color.a);
-}
-"""
+from . import resources, particles
 
 
 class Renderer2D:
     """Combines VBO, VAO and Shaders to render 2D sprites."""
 
-    def __init__(self, context: moderngl.Context, max_num_sprites: int) -> None:
+    def __init__(self, context: moderngl.Context, cache: resources.Cache, max_num_sprites: int) -> None:
         """Initializes buffers for a maximum number of sprites."""
         self.context = context
         self.vbo = context.buffer(reserve=14 * 4 * max_num_sprites)
 
-        self.program = context.program(vertex_shader=vertex_shader, geometry_shader=geometry_shader,
-                                       fragment_shader=fragment_shader)
+        self.program = context.program(vertex_shader=cache.get_shader('data/glsl/sprite.vert'),
+                                       geometry_shader=cache.get_shader('data/glsl/sprite.geom'),
+                                       fragment_shader=cache.get_shader('data/glsl/sprite.frag'))
 
         self.vao = context.vertex_array(self.program,
                                         [(self.vbo, '2f 2f 1f 4f 2f 2f 1f', 'in_position', 'in_size', 'in_rotation',
@@ -203,9 +97,9 @@ class TextureError(Exception):
 class Batch:
     """Provides rendering multiple sprites at once. This requires all sprites to use the same texture."""
 
-    def __init__(self, context: moderngl.Context, max_num_sprites: int) -> None:
+    def __init__(self, context: moderngl.Context, cache: resources.Cache, max_num_sprites: int) -> None:
         """Initializes the batch renderer for the given maximum number of sprites."""
-        self.renderer = Renderer2D(context, max_num_sprites)
+        self.renderer = Renderer2D(context, cache, max_num_sprites)
 
         self.last_texture = None
 
@@ -239,9 +133,9 @@ class Camera:
     rotation: as float in degree, defaults to 0
     """
 
-    def __init__(self, context: moderngl.Context) -> None:
+    def __init__(self, context: moderngl.Context, cache: resources.Cache) -> None:
         """Creates the camera and sprite rendering capabilities."""
-        self.renderer = Renderer2D(context, 1)
+        self.renderer = Renderer2D(context, cache, 1)
 
         # set up camera
         self.center = pygame.math.Vector2(0, 0)

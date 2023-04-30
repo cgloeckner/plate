@@ -1,3 +1,6 @@
+"""Particle system that updates particles CPU-based and renders them GPU-based.
+"""
+
 import pygame
 import moderngl
 import array
@@ -6,102 +9,7 @@ import glm
 
 from typing import Tuple
 
-
-vertex_shader = """
-#version 330
-
-in vec2 in_position;
-in vec2 in_direction;
-in float in_size;
-in float in_scale;
-in vec4 in_color;
-
-uniform mat4 view;
-uniform mat4 projection;
-
-uniform sampler2D sprite_texture;
-
-out float size;
-out float scale;
-out vec4 color;
-
-void main() {
-    gl_Position = vec4(in_position, 0.0, 1.0);
-    
-    size = in_size;
-    scale = in_scale;
-    color = in_color;
-}
-"""
-
-geometry_shader = """
-#version 330
-
-layout (points) in;
-layout (triangle_strip, max_vertices = 4) out;
-
-in float size[];
-in float scale[];
-in vec4 color[];
-
-uniform mat4 view;
-uniform mat4 projection;
-uniform sampler2D sprite_texture;
-
-out float out_scale;
-out vec2 uv;
-out vec4 v_color;
-
-void main() {
-    v_color = color[0];
-    
-    vec2 center = gl_in[0].gl_Position.xy;
-    float step = size[0] * scale[0] / 2;
-
-    // Upper left
-    gl_Position = projection * view * vec4(vec2(-step, step) + center, 0.0, 1.0);
-    out_scale = scale[0];
-    uv = vec2(0.0, 1.0);
-    EmitVertex();
-
-    // lower left
-    gl_Position = projection * view * vec4(vec2(-step, -step) + center, 0.0, 1.0);
-    out_scale = scale[0];
-    uv = vec2(0.0, 0.0);
-    EmitVertex();
-
-    // upper right
-    gl_Position = projection * view * vec4(vec2(step, step) + center, 0.0, 1.0);
-    out_scale = scale[0];
-    uv = vec2(1.0, 1.0);
-    EmitVertex();
-
-    // lower right
-    gl_Position = projection * view * vec4(vec2(step, -step) + center, 0.0, 1.0);
-    out_scale = scale[0];
-    uv = vec2(1.0, 0.0);
-    EmitVertex();
-
-    EndPrimitive();
-}
-"""
-
-fragment_shader = """
-#version 330
-
-in float scale;
-in vec2 uv;
-in vec4 v_color;
-
-uniform sampler2D sprite_texture;
-
-out vec4 frag_color;
-
-void main() {
-    vec4 tex_color = v_color * texture(sprite_texture, uv);
-    frag_color = vec4(tex_color.rgb, 1.0 - clamp(scale, 0.0, 1.0));
-}
-"""
+from . import resources
 
 
 def random_particle(impact: pygame.math.Vector2, delta_degree: float, origin: pygame.math.Vector2, radius: float,
@@ -129,15 +37,17 @@ def random_particle(impact: pygame.math.Vector2, delta_degree: float, origin: py
 class ParticleSystem:
     """Manages creating, updating and rendering lots of circular particles."""
 
-    def __init__(self, context: moderngl.Context, max_num_particles: int, resolution: float) -> None:
+    def __init__(self, context: moderngl.Context, cache: resources.Cache, max_num_particles: int,
+                 resolution: float) -> None:
         """Create shader-based particle system with a given maximum number of particles, where each particle is a
         circle with the given texture resolution.
         """
         self._max_num_particles = max_num_particles
 
         self._vbo = context.buffer(reserve=9 * 4 * self._max_num_particles)
-        self._program = context.program(vertex_shader=vertex_shader, geometry_shader=geometry_shader,
-                                        fragment_shader=fragment_shader)
+        self._program = context.program(vertex_shader=cache.get_shader('data/glsl/particles.vert'),
+                                        geometry_shader=cache.get_shader('data/glsl/particles.geom'),
+                                        fragment_shader=cache.get_shader('data/glsl/particles.frag'))
         self._program['sprite_texture'] = 0
         self._vao = context.vertex_array(self._program,
                                          [(self._vbo, '2f 2f 1f 1f 4f', 'in_position', 'in_direction', 'in_size',

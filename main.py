@@ -3,22 +3,20 @@ import moderngl
 import math
 import random
 
-from core import app, particles, render
+from core import app, resources, particles, render
 
 
 class DemoState(app.State):
     def __init__(self, engine: app.Engine):
         super().__init__(engine)
-        self.cache = app.ResourceCache(engine.context)
+        self.cache = resources.Cache(engine.context)
 
-        self.tex0 = self.cache.get_png('ship.png')
+        self.tex0 = self.cache.get_png('data/sprites/ship.png')
         self.tex0.filter = moderngl.NEAREST, moderngl.NEAREST
-        self.tex1 = self.cache.get_svg('ufo.svg', scale=5)
+        self.tex1 = self.cache.get_svg('data/sprites/ufo.svg', scale=5)
         self.tex1.filter = moderngl.NEAREST, moderngl.NEAREST
-        self.tex2 = self.cache.get_png('tile.png')
-        self.tex2.filter = moderngl.NEAREST, moderngl.NEAREST
 
-        self.camera = render.Camera(engine.context)
+        self.camera = render.Camera(engine.context, self.cache)
 
         self.s1 = render.Sprite(self.tex0, clip=pygame.Rect(0, 0, 32, 32))
 
@@ -50,7 +48,7 @@ class DemoState(app.State):
         self.tile.clip.w *= 10
         self.tile.clip.h *= 10
 
-        self.parts = particles.ParticleSystem(self.engine.context, 5000, 128)
+        self.parts = particles.ParticleSystem(self.engine.context, self.cache, 5000, 128)
 
     def emit_particles(self) -> None:
         size = self.camera.get_rect().size
