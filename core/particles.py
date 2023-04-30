@@ -22,8 +22,8 @@ def random_particle(impact: pygame.math.Vector2, delta_degree: float, origin: py
     Color: based on `color`, normalized
     """
     x, y = origin
-    x += random.random() * 2 * radius - 1
-    y += random.random() * 2 * radius - 1
+    x += random.uniform(-radius, radius)
+    y += random.uniform(-radius, radius)
 
     angle = random.uniform(delta_degree, 360-delta_degree)
     direction = impact.rotate(angle)
