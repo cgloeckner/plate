@@ -1,6 +1,7 @@
 import pygame
 import moderngl
 import math
+import random
 
 from core import app, particles, render
 
@@ -51,12 +52,20 @@ class DemoState(app.State):
         self.tile.clip.w *= num_x
         self.tile.clip.h *= num_y
 
-        self.parts = particles.ParticleSystem(self.engine.context, 1000)
-        self.parts.emit(pygame.math.Vector2(0, 0), 10.0, pygame.Color('green'), 100)
+        self.parts = particles.ParticleSystem(self.engine.context, 5000, 128)
 
     def process_event(self, event: pygame.event.Event) -> None:
         if event.type == pygame.QUIT or (event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE):
             self.engine.running = False
+
+        if event.type == pygame.MOUSEBUTTONUP:
+            size = pygame.display.get_window_size()
+            pos = pygame.math.Vector2(pygame.mouse.get_pos())
+            pos.y = size[1] - pos.y
+            pos.x -= size[0] // 2
+            pos.y -= size[1] // 2
+            color = pygame.Color(random.randrange(255), random.randrange(255), random.randrange(255))
+            self.parts.emit(pos, 5.0, 20.0, color, 100)
 
     def update(self, elapsed_ms) -> None:
         self.s1.scale.x = 1 + math.sin(self.total_ms / 250) * 0.05
@@ -87,11 +96,11 @@ class DemoState(app.State):
         self.camera.center = self.s1.center.copy()
         self.camera.update()
 
-        # no need to update stars' positions
         self.parts.update(elapsed_ms)
+        num_parts = self.parts.get_particle_count()
 
         self.total_ms += elapsed_ms
-        pygame.display.set_caption(f'{int(self.engine.clock.get_fps())} FPS')
+        pygame.display.set_caption(f'{int(self.engine.clock.get_fps())} FPS | {num_parts} Particles')
 
     def render(self) -> None:
         # self.camera.render(self.tile)
