@@ -13,7 +13,7 @@ class DemoState(app.State):
 
         self.tex0 = self.cache.get_png('ship.png')
         self.tex0.filter = moderngl.NEAREST, moderngl.NEAREST
-        self.tex1 = self.cache.get_svg('ufo.svg', scale=10)
+        self.tex1 = self.cache.get_svg('ufo.svg', scale=5)
         self.tex1.filter = moderngl.NEAREST, moderngl.NEAREST
         self.tex2 = self.cache.get_png('tile.png')
         self.tex2.filter = moderngl.NEAREST, moderngl.NEAREST
@@ -33,24 +33,21 @@ class DemoState(app.State):
 
         self.total_ms = 0
 
-        num_y = 50
-        num_x = 100
-        """
-        self.batch = render.Batch(context, num_y * num_x)
-        for y in range(num_y):
-            for x in range(num_x):
-                s = render.Sprite(tex2)
-                s.center.x = x * 128
-                s.center.y = y * 128
-                s.scale.x = 2
-                s.scale.y = 2
-                s.rotation = random.randrange(360)
-                s.color = pygame.Color(random.randrange(255), random.randrange(255), random.randrange(255))
-                self.batch.append(s)
-        """
-        self.tile = render.Sprite(self.tex2)
-        self.tile.clip.w *= num_x
-        self.tile.clip.h *= num_y
+        w, h = pygame.display.get_window_size()
+        stars_surface = pygame.Surface((w, h))
+        for _ in range(int((w * h) ** 0.5)):
+            x = random.randrange(w)
+            y = random.randrange(h)
+            v = random.randrange(255)
+            color = pygame.Color(v, v, v, 255)
+            pygame.draw.rect(stars_surface, color, (x, y, 1.0, 1.0))
+
+        stars_img_data = pygame.image.tostring(stars_surface, 'RGBA', True)
+        self.stars_texture = self.engine.context.texture(size=stars_surface.get_size(), components=4, data=stars_img_data)
+
+        self.tile = render.Sprite(self.stars_texture)
+        self.tile.clip.w *= 10
+        self.tile.clip.h *= 10
 
         self.parts = particles.ParticleSystem(self.engine.context, 5000, 128)
 
@@ -62,6 +59,7 @@ class DemoState(app.State):
             size = pygame.display.get_window_size()
             pos = pygame.math.Vector2(pygame.mouse.get_pos())
             pos.y = size[1] - pos.y
+            pos += self.camera.center
             pos.x -= size[0] // 2
             pos.y -= size[1] // 2
             color = pygame.Color(random.randrange(255), random.randrange(255), random.randrange(255))
@@ -103,7 +101,7 @@ class DemoState(app.State):
         pygame.display.set_caption(f'{int(self.engine.clock.get_fps())} FPS | {num_parts} Particles')
 
     def render(self) -> None:
-        # self.camera.render(self.tile)
+        self.camera.render(self.tile)
         self.camera.render_particles(self.parts)
         self.camera.render(self.s2)
         self.camera.render(self.s3)

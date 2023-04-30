@@ -108,8 +108,7 @@ void main() {
         f_scale = 0.0;
     }
     vec4 tex_color = v_color * texture(sprite_texture, uv);
-    vec3 color = tex_color.rgb * tex_color.a;
-    frag_color = vec4(color, 1.0 - f_scale);
+    frag_color = vec4(tex_color.rgb, 1.0 - f_scale);
 }
 """
 
@@ -125,7 +124,7 @@ def create_particle(origin: pygame.math.Vector2, radius: float, speed: float, co
     direction = pygame.math.Vector2(0, 1).rotate(random.randrange(0, 360))
     direction *= random.random() * speed * 2 + 0.01
     color_tuple = color.normalize()
-    return x, y, direction.x, direction.y, radius, 1.0, *color_tuple
+    return x, y, direction.x, direction.y, radius, 1 + random.random(), *color_tuple
 
 
 class ParticleSystem:
