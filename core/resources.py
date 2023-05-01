@@ -56,3 +56,10 @@ class Cache:
                 self.shader_cache[path] = handle.read()
 
         return self.shader_cache[path]
+
+    def get_font(self, font_name: str = '', font_size: int = 18) -> pygame.font.Font:
+        """Loads a SysFont via filename and font size."""
+        if font_name == '':
+            return pygame.font.SysFont(pygame.font.get_default_font(), font_size)
+
+        raise NotImplementedError()

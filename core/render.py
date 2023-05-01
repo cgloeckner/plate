@@ -81,6 +81,29 @@ class Offset(IntEnum):
 # ----------------------------------------------------------------------------------------------------------------------
 
 
+class Text:
+    def __init__(self, context: moderngl.Context, font: pygame.font.Font):
+        self._context = context
+        self._font = font
+        self.sprite: Optional[Sprite] = None
+
+    def set_string(self, text: str, antialias: bool = True, color: pygame.Color = pygame.Color('white')) -> None:
+        surface = self._font.render(text, antialias, color)
+        img_data = pygame.image.tostring(surface, 'RGBA', True)
+        texture = self._context.texture(size=surface.get_size(), components=4, data=img_data)
+        texture.filter = moderngl.NEAREST, moderngl.NEAREST
+
+        if self.sprite is not None:
+            self.sprite.texture.release()
+
+        self.sprite = Sprite(texture)
+        self.sprite.origin.x = 0
+        self.sprite.origin.y = 0
+
+
+# ----------------------------------------------------------------------------------------------------------------------
+
+
 class TextureError(Exception):
     def __init__(self, expected: moderngl.Texture, found: moderngl.Texture) -> None:
         super().__init__(f'Unexpected texture: found {id(found)} but expected {id(expected)}')
@@ -212,6 +235,14 @@ class Camera:
         self._renderer.clear()
         self._renderer.append(sprite)
         self._renderer.render(sprite.texture, self._m_view, self._m_proj)
+
+    def render_text(self, text: Text) -> None:
+        if text.sprite is None:
+            return
+
+        self._renderer.clear()
+        self._renderer.append(text.sprite)
+        self._renderer.render(text.sprite.texture, self._m_view, self._m_proj)
 
     def render_batch(self, batch: RenderBatch) -> None:
         """Render the given batch."""

@@ -2,30 +2,7 @@ import pygame
 import moderngl
 import random
 
-from typing import Optional
-
 from core import app, resources, particles, render
-
-
-class Text:
-    def __init__(self, context: moderngl.Context):
-        self.context = context
-        self.font = pygame.font.SysFont(pygame.font.get_default_font(), 36)
-        self.sprite: Optional[render.Sprite] = None
-
-    def update(self, num_fps: int) -> None:
-        if self.sprite is not None:
-            self.sprite.texture.release()
-
-        surface = self.font.render(f'{num_fps} FPS', False, 'white')
-        img_data = pygame.image.tostring(surface, 'RGBA', True)
-        texture = self.context.texture(size=surface.get_size(), components=4, data=img_data)
-        texture.filter = moderngl.NEAREST, moderngl.NEAREST
-        self.sprite = render.Sprite(texture)
-        self.sprite.origin.x = 0
-        self.sprite.origin.y = 0
-        #self.sprite.center.x = texture.size[0] // 2
-        #self.sprite.center.y = texture.size[1] // 2
 
 
 class DemoState(app.State):
@@ -87,7 +64,7 @@ class DemoState(app.State):
 
         self.total_ms = 0
 
-        self.fps = Text(self.engine.context)
+        self.fps = render.Text(self.engine.context, self.cache.get_font(font_size=30))
 
     def process_event(self, event: pygame.event.Event) -> None:
         if event.type == pygame.QUIT or (event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE):
@@ -148,8 +125,7 @@ class DemoState(app.State):
         self.total_ms += elapsed_ms
         num_fps = int(self.engine.clock.get_fps())
         if self.total_ms > 250:
-            pygame.display.set_caption(f'{int(self.engine.clock.get_fps())} FPS')
-            self.fps.update(num_fps)
+            self.fps.set_string(f'FPS: {num_fps}')
             self.total_ms -= 250
 
     def render(self) -> None:
@@ -160,8 +136,7 @@ class DemoState(app.State):
         self.camera.render(self.s3)
         self.camera.render(self.s1)
 
-        if self.fps.sprite is not None:
-            self.gui.render(self.fps.sprite)
+        self.gui.render_text(self.fps)
 
 
 def main() -> None:
