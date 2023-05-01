@@ -9,7 +9,7 @@ import glm
 import array
 
 from typing import Optional, Tuple
-from enum import IntEnum
+from enum import IntEnum, auto
 
 from . import resources, particles
 
@@ -18,6 +18,7 @@ class Sprite:
     """Combines sprite data such as
 
     position: as pygame.math.Vector2, defaults to (0, 0)
+    origin: as pygame.math.Vector2, defaults to (0.5, 0.5)
     scale: as pygame.math.Vector2, defaults to either the clipping size (if provided) or the texture size (fallback)
     rotation: as float in degree, defaults to 0
     color: as pygame.Color
@@ -29,6 +30,7 @@ class Sprite:
     def __init__(self, texture: moderngl.Texture, clip: Optional[pygame.Rect] = None):
         """Creates a sprite using a texture and an optional clipping rectangle."""
         self.center = pygame.math.Vector2(0, 0)
+        self.origin = pygame.math.Vector2(0.5, 0.5)
         self.scale = pygame.math.Vector2(1, 1)
         self.rotation = 0.0
         self.color = pygame.Color('white')
@@ -39,29 +41,41 @@ class Sprite:
     def as_tuple(self) -> Tuple[float, ...]:
         """Returns the sprite data as tuple, where color and clipping rect are normalized."""
         size = pygame.math.Vector2(self.clip.size).elementwise() * self.scale
-        color = self.color.normalize()
+        color = self.color.normalize()[:-1]
         tex_size = pygame.math.Vector2(self.texture.size)
         clip_xy = pygame.math.Vector2(self.clip.topleft).elementwise() / tex_size
         clip_wh = pygame.math.Vector2(self.clip.size).elementwise() / tex_size
-        return *self.center, *size, self.rotation, *color, *clip_xy, *clip_wh, self.brightness
+        return *self.center, *self.origin, *size, self.rotation, *color, *clip_xy, *clip_wh, self.brightness
+
+    @staticmethod
+    def get_types() -> str:
+        """Returns a string of all used types for the provided variables inside the shader."""
+        return '2f 2f 2f 1f 3f 2f 2f 1f'
+
+    @staticmethod
+    def get_variables() -> Tuple[str, ...]:
+        """Returns a tuple of strings for the variables names inside the shader."""
+        return 'in_position', 'in_origin', 'in_size', 'in_rotation', 'in_color', 'in_clip_offset', 'in_clip_size', \
+            'in_brightness'
 
 
 class Offset(IntEnum):
     """Provides offsets for accessing individual data within the RenderBatch's array."""
     POS_X = 0
-    POS_Y = 1
-    SIZE_X = 2
-    SIZE_Y = 3
-    ROTATION = 4
-    COLOR_R = 5
-    COLOR_G = 6
-    COLOR_B = 7
-    COLOR_A = 8
-    CLIP_X = 9
-    CLIP_Y = 10
-    CLIP_W = 11
-    CLIP_H = 12
-    BRIGHTNESS = 13
+    POS_Y = auto()
+    ORIGIN_X = auto()
+    ORIGIN_Y = auto()
+    SIZE_X = auto()
+    SIZE_Y = auto()
+    ROTATION = auto()
+    COLOR_R = auto()
+    COLOR_G = auto()
+    COLOR_B = auto()
+    CLIP_X = auto()
+    CLIP_Y = auto()
+    CLIP_W = auto()
+    CLIP_H = auto()
+    BRIGHTNESS = auto()
 
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -87,18 +101,15 @@ class RenderBatch:
 
     def __init__(self, context: moderngl.Context, cache: resources.Cache, max_num_sprites: int) -> None:
         """Initializes buffers for a maximum number of sprites."""
-        self._context = context
-        self._vbo = context.buffer(reserve=len(Offset) * 4 * max_num_sprites)
+        self._max_num_sprites = max_num_sprites
 
+        self._vbo = context.buffer(reserve=len(Offset) * 4 * max_num_sprites)
         self._program = context.program(vertex_shader=cache.get_shader('data/glsl/sprite.vert'),
                                         geometry_shader=cache.get_shader('data/glsl/sprite.geom'),
                                         fragment_shader=cache.get_shader('data/glsl/sprite.frag'))
-
         self._vao = context.vertex_array(self._program,
-                                         [(self._vbo, '2f 2f 1f 4f 2f 2f 1f', 'in_position', 'in_size', 'in_rotation',
-                                           'in_color', 'in_clip_offset', 'in_clip_size', 'in_brightness')])
+                                         [(self._vbo, Sprite.get_types(), *Sprite.get_variables())])
 
-        self._max_num_sprites = max_num_sprites
         self._num_sprites = 0
         self._texture = None
         self.data = array.array('f')

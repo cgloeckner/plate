@@ -17,13 +17,15 @@ class Text:
         if self.sprite is not None:
             self.sprite.texture.release()
 
-        surface = self.font.render(f'{num_fps}', False, 'white')
+        surface = self.font.render(f'{num_fps} FPS', False, 'white')
         img_data = pygame.image.tostring(surface, 'RGBA', True)
         texture = self.context.texture(size=surface.get_size(), components=4, data=img_data)
         texture.filter = moderngl.NEAREST, moderngl.NEAREST
         self.sprite = render.Sprite(texture)
-        self.sprite.center.x = texture.size[0] // 2
-        self.sprite.center.y = texture.size[1] // 2
+        self.sprite.origin.x = 0
+        self.sprite.origin.y = 0
+        #self.sprite.center.x = texture.size[0] // 2
+        #self.sprite.center.y = texture.size[1] // 2
 
 
 class DemoState(app.State):
@@ -101,9 +103,9 @@ class DemoState(app.State):
                 self.s1.brightness = 1.0
 
         for index in range(len(self.asteroids_batch)):
-            self.asteroids_batch.data[index * 14] += elapsed_ms * 0.01
-            self.asteroids_batch.data[index * 14 + 1] += elapsed_ms * 0.01
-            self.asteroids_batch.data[index * 14 + 4] += elapsed_ms * 0.01
+            self.asteroids_batch.data[index * len(render.Offset) + render.Offset.POS_X] += elapsed_ms * 0.01
+            self.asteroids_batch.data[index * len(render.Offset) + render.Offset.POS_Y] += elapsed_ms * 0.01
+            self.asteroids_batch.data[index * len(render.Offset) + render.Offset.ROTATION] += elapsed_ms * 0.01
 
         keys = pygame.key.get_pressed()
 

@@ -28,6 +28,7 @@ class RenderTest(unittest.TestCase):
         s = render.Sprite(self.tex, pygame.Rect(6, 7, 8, 9))
         s.center.x = 1
         s.center.y = 2
+        s.origin.y = 0.25
         s.scale.x = 3
         s.scale.y = 4
         s.rotation = 5
@@ -38,13 +39,14 @@ class RenderTest(unittest.TestCase):
         self.assertEqual(len(t), len(render.Offset))
         self.assertEqual(t[render.Offset.POS_X], s.center.x)
         self.assertEqual(t[render.Offset.POS_Y], s.center.y)
+        self.assertEqual(t[render.Offset.ORIGIN_X], s.origin.x)
+        self.assertEqual(t[render.Offset.ORIGIN_Y], s.origin.y)
         self.assertEqual(t[render.Offset.SIZE_X], s.clip.w * s.scale.x)
         self.assertEqual(t[render.Offset.SIZE_Y], s.clip.h * s.scale.y)
         self.assertEqual(t[render.Offset.ROTATION], s.rotation)
         self.assertEqual(t[render.Offset.COLOR_R], s.color.a / 255.0)
         self.assertEqual(t[render.Offset.COLOR_G], s.color.g / 255.0)
         self.assertEqual(t[render.Offset.COLOR_B], s.color.b / 255.0)
-        self.assertEqual(t[render.Offset.COLOR_A], s.color.a / 255.0)
         self.assertEqual(t[render.Offset.CLIP_X], s.clip.x / 10)
         self.assertEqual(t[render.Offset.CLIP_Y], s.clip.y / 8)
         self.assertEqual(t[render.Offset.CLIP_W], s.clip.w / 10)

@@ -8,7 +8,7 @@ import random
 import glm
 
 from typing import Tuple
-from enum import IntEnum
+from enum import IntEnum, auto
 
 from . import resources
 
@@ -38,15 +38,15 @@ def random_particle(impact: pygame.math.Vector2, delta_degree: float, origin: py
 class Offset(IntEnum):
     """Provides offsets for accessing individual data within the ParticleSystem's array."""
     POS_X = 0
-    POS_Y = 1
-    DIR_X = 2
-    DIR_Y = 3
-    SIZE = 4
-    SCALE = 5
-    COLOR_R = 6
-    COLOR_G = 7
-    COLOR_B = 8
-    COLOR_A = 9
+    POS_Y = auto()
+    DIR_X = auto()
+    DIR_Y = auto()
+    SIZE = auto()
+    SCALE = auto()
+    COLOR_R = auto()
+    COLOR_G = auto()
+    COLOR_B = auto()
+    COLOR_A = auto()
 
 
 SPEED: float = 0.01
