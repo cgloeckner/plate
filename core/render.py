@@ -89,9 +89,7 @@ class Text:
 
     def set_string(self, text: str, antialias: bool = True, color: pygame.Color = pygame.Color('white')) -> None:
         surface = self._font.render(text, antialias, color)
-        img_data = pygame.image.tostring(surface, 'RGBA', True)
-        texture = self._context.texture(size=surface.get_size(), components=4, data=img_data)
-        texture.filter = moderngl.NEAREST, moderngl.NEAREST
+        texture = resources.texture_from_surface(self._context, surface)
 
         if self.sprite is not None:
             self.sprite.texture.release()

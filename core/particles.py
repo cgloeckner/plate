@@ -30,7 +30,7 @@ def random_particle(impact: pygame.math.Vector2, delta_degree: float, origin: py
     direction = impact.rotate(angle)
     direction *= random.uniform(0.01, 2 * speed)
 
-    color_tuple = color.normalize()
+    color_tuple = color.normalize()[:-1]
 
     return x, y, direction.x, direction.y, radius, 1 + random.random(), *color_tuple
 
@@ -46,7 +46,6 @@ class Offset(IntEnum):
     COLOR_R = auto()
     COLOR_G = auto()
     COLOR_B = auto()
-    COLOR_A = auto()
 
 
 SPEED: float = 0.01
@@ -70,14 +69,13 @@ class ParticleSystem:
                                         fragment_shader=cache.get_shader('data/glsl/particles.frag'))
         self._program['sprite_texture'] = 0
         self._vao = context.vertex_array(self._program,
-                                         [(self._vbo, '2f 2f 1f 1f 4f', 'in_position', 'in_direction', 'in_size',
+                                         [(self._vbo, '2f 2f 1f 1f 3f', 'in_position', 'in_direction', 'in_size',
                                           'in_scale', 'in_color')])
 
         # particle circle texture
         surface = pygame.Surface((resolution, resolution), flags=pygame.SRCALPHA)
         pygame.draw.circle(surface, pygame.Color('white'), (resolution//2, resolution//2), resolution//2)
-        img_data = pygame.image.tostring(surface, 'RGBA', True)
-        self._texture = context.texture(size=surface.get_size(), components=4, data=img_data)
+        self._texture = resources.texture_from_surface(context, surface)
 
         self._data = array.array('f')
         self._num_particles = 0

@@ -5,19 +5,32 @@ import random
 from core import app, resources, particles, render
 
 
+import array
+
+
 class AsteroidsField(render.RenderBatch):
     def __init__(self, context: moderngl.Context, cache: resources.Cache, field_size: int):
         super().__init__(context, cache, field_size)
 
-        self.tex = cache.get_png('data/sprites/asteroid.png')
+        self.tex = cache.get_svg('data/sprites/asteroid.svg', scale=10)
         self.tex.filter = moderngl.NEAREST, moderngl.NEAREST
 
-    def add_asteroid(self, center: pygame.math.Vector2, scale: float) -> None:
+        self.velocity = array.array('f')
+
+    def add_asteroid(self, center: pygame.math.Vector2, scale: float, velocity: pygame.math.Vector2) -> None:
         s = render.Sprite(self.tex)
         s.center = center
         s.rotation = random.uniform(0.0, 360.0)
-        s.scale *= scale
+        s.scale *= scale / 10
         self.append(s)
+        self.velocity.extend(velocity.xy)
+
+    def update(self, elapsed_ms: int) -> None:
+        delta = elapsed_ms * 0.01
+        for index in range(len(self)):
+            self.data[index * len(render.Offset) + render.Offset.POS_X] += self.velocity[index * 2] * delta
+            self.data[index * len(render.Offset) + render.Offset.POS_Y] += self.velocity[index * 2 + 1] * delta
+            self.data[index * len(render.Offset) + render.Offset.ROTATION] += delta
 
 
 class StarField:
@@ -30,8 +43,7 @@ class StarField:
             color = pygame.Color(v, v, v, 255)
             pygame.draw.circle(surface, color, (x, y), 2.0)
 
-        img_data = pygame.image.tostring(surface, 'RGBA', True)
-        self.texture = context.texture(size=(width, height), components=4, data=img_data)
+        self.texture = resources.texture_from_surface(context, surface)
         self.texture.filter = moderngl.NEAREST, moderngl.NEAREST
 
         self.sprite = render.Sprite(self.texture)
@@ -77,7 +89,8 @@ class DemoState(app.State):
             x = random.randrange(0, 1600 * 10)
             y = random.randrange(0, 900 * 10)
             scale = random.uniform(0.5, 4.0)
-            self.asteroids.add_asteroid(pygame.math.Vector2(x, y), scale)
+            direction = pygame.math.Vector2(0, 1).rotate(random.uniform(0.0, 360.0)) * random.uniform(0.5, 4.0)
+            self.asteroids.add_asteroid(pygame.math.Vector2(x, y), scale, direction)
 
         self.total_ms = 0
 
@@ -96,10 +109,7 @@ class DemoState(app.State):
             if self.s1.brightness < 1.0:
                 self.s1.brightness = 1.0
 
-        #for index in range(len(self.asteroids_batch)):
-        #    self.asteroids_batch.data[index * len(render.Offset) + render.Offset.POS_X] += elapsed_ms * 0.01
-        #    self.asteroids_batch.data[index * len(render.Offset) + render.Offset.POS_Y] += elapsed_ms * 0.01
-        #    self.asteroids_batch.data[index * len(render.Offset) + render.Offset.ROTATION] += elapsed_ms * 0.01
+        self.asteroids.update(elapsed_ms)
 
         keys = pygame.key.get_pressed()
 
@@ -107,7 +117,7 @@ class DemoState(app.State):
             self.v1 = self.forward.rotate(self.camera.rotation) * 0.5 * elapsed_ms
 
             impact = self.forward.rotate(self.s1.rotation)
-            pos = self.s1.center.copy() - impact * 32
+            pos = self.s1.center.copy() - impact * 16
             self.parts.emit(1, impact=impact, delta_degree=170, origin=pos, radius=5.0, speed=20.0,
                             color=pygame.Color('orange'))
 
@@ -142,7 +152,7 @@ class DemoState(app.State):
         self.total_ms += elapsed_ms
         num_fps = int(self.engine.clock.get_fps())
         if self.total_ms > 250:
-            self.fps.set_string(f'FPS: {num_fps}')
+            self.fps.set_string(f'FPS: {num_fps}\n{len(self.parts)} Particles')
             self.total_ms -= 250
 
     def render(self) -> None:

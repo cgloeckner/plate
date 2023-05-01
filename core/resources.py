@@ -9,6 +9,11 @@ import cairosvg
 from typing import Dict, Tuple
 
 
+def texture_from_surface(context: moderngl.Context, surface: pygame.Surface) -> moderngl.Texture:
+    img_data = pygame.image.tostring(surface, 'RGBA', True)
+    return context.texture(size=surface.get_size(), components=4, data=img_data)
+
+
 class Cache:
     """Manages loading and caching data from disk."""
 

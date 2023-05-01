@@ -5,7 +5,7 @@ layout (triangle_strip, max_vertices = 4) out;
 
 in float size[];
 in float scale[];
-in vec4 color[];
+in vec3 color[];
 
 uniform mat4 view;
 uniform mat4 projection;
@@ -13,7 +13,7 @@ uniform sampler2D sprite_texture;
 
 out float out_scale;
 out vec2 uv;
-out vec4 v_color;
+out vec3 v_color;
 
 void main() {
     v_color = color[0];
