@@ -52,7 +52,7 @@ class DemoState(app.State):
         self.s3 = render.Sprite(self.tex1, clip=pygame.Rect(0, 0, self.tex1.size[1], self.tex1.size[1]))
         self.s3.center.x = 150
 
-        self.asteroids_batch = render.Batch(self.engine.context, self.cache, 1000)
+        self.asteroids_batch = render.RenderBatch(self.engine.context, self.cache, 1000)
         for _ in range(1000):
             s = render.Sprite(self.tex2)
             s.center.x = random.randrange(0, 1600 * 10)
@@ -100,10 +100,10 @@ class DemoState(app.State):
             if self.s1.brightness < 1.0:
                 self.s1.brightness = 1.0
 
-        for index in range(self.asteroids_batch.renderer.max_num_sprites):
-            self.asteroids_batch.renderer.data[index * 14] += elapsed_ms * 0.01
-            self.asteroids_batch.renderer.data[index * 14 + 1] += elapsed_ms * 0.01
-            self.asteroids_batch.renderer.data[index * 14 + 4] += elapsed_ms * 0.01
+        for index in range(len(self.asteroids_batch)):
+            self.asteroids_batch.data[index * 14] += elapsed_ms * 0.01
+            self.asteroids_batch.data[index * 14 + 1] += elapsed_ms * 0.01
+            self.asteroids_batch.data[index * 14 + 4] += elapsed_ms * 0.01
 
         keys = pygame.key.get_pressed()
 

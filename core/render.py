@@ -13,46 +13,6 @@ from typing import Optional, Tuple
 from . import resources, particles
 
 
-class Renderer2D:
-    """Combines VBO, VAO and Shaders to render 2D sprites."""
-
-    def __init__(self, context: moderngl.Context, cache: resources.Cache, max_num_sprites: int) -> None:
-        """Initializes buffers for a maximum number of sprites."""
-        self.context = context
-        self.vbo = context.buffer(reserve=14 * 4 * max_num_sprites)
-
-        self.program = context.program(vertex_shader=cache.get_shader('data/glsl/sprite.vert'),
-                                       geometry_shader=cache.get_shader('data/glsl/sprite.geom'),
-                                       fragment_shader=cache.get_shader('data/glsl/sprite.frag'))
-
-        self.vao = context.vertex_array(self.program,
-                                        [(self.vbo, '2f 2f 1f 4f 2f 2f 1f', 'in_position', 'in_size', 'in_rotation',
-                                          'in_color', 'in_clip_offset', 'in_clip_size', 'in_brightness')])
-
-        self.data = array.array('f')
-        self.max_num_sprites = max_num_sprites
-        self.num_sprites = 0
-
-    def clear(self) -> None:
-        """Resets the buffer data."""
-        self.data = array.array('f')
-        self.num_sprites = 0
-
-    def render(self, texture: moderngl.Texture, view_matrix: glm.mat4x4, projection_matrix: glm.mat4x4) -> None:
-        """Renders the vertex data as points using the given texture, view matrix and projection matrix."""
-        self.vbo.write(self.data)
-
-        texture.use(0)
-        self.program['view'].write(view_matrix)
-        self.program['projection'].write(projection_matrix)
-        self.program['sprite_texture'] = 0
-
-        self.vao.render(mode=moderngl.POINTS, vertices=self.num_sprites)
-
-
-# ----------------------------------------------------------------------------------------------------------------------
-
-
 class Sprite:
     """Combines sprite data such as
 
@@ -95,32 +55,72 @@ class TextureError(Exception):
         self.found = found
 
 
-class Batch:
-    """Provides rendering multiple sprites at once. This requires all sprites to use the same texture."""
+# ----------------------------------------------------------------------------------------------------------------------
+
+
+class RenderBatch:
+    """Combines VBO, VAO and Shaders to render 2D sprites.
+
+    If multiple sprites are appended, they need to use the same texture.
+
+    The data array is publicly available to allow for in place manipulation (e.g. interpolating positions).
+    """
 
     def __init__(self, context: moderngl.Context, cache: resources.Cache, max_num_sprites: int) -> None:
-        """Initializes the batch renderer for the given maximum number of sprites."""
-        self.renderer = Renderer2D(context, cache, max_num_sprites)
+        """Initializes buffers for a maximum number of sprites."""
+        self._context = context
+        self._vbo = context.buffer(reserve=14 * 4 * max_num_sprites)
 
-        self.last_texture = None
+        self._program = context.program(vertex_shader=cache.get_shader('data/glsl/sprite.vert'),
+                                        geometry_shader=cache.get_shader('data/glsl/sprite.geom'),
+                                        fragment_shader=cache.get_shader('data/glsl/sprite.frag'))
+
+        self._vao = context.vertex_array(self._program,
+                                         [(self._vbo, '2f 2f 1f 4f 2f 2f 1f', 'in_position', 'in_size', 'in_rotation',
+                                           'in_color', 'in_clip_offset', 'in_clip_size', 'in_brightness')])
+
+        self._max_num_sprites = max_num_sprites
+        self._num_sprites = 0
+        self._texture = None
+        self.data = array.array('f')
 
     def clear(self) -> None:
-        """Resets the renderer and the texture used."""
-        self.renderer.clear()
-        self.last_texture = None
+        """Resets the buffer data."""
+        self._num_sprites = 0
+        self._texture = None
+        self.data = array.array('f')
+
+    def __len__(self) -> int:
+        """Returns the number of sprites that were appended to the renderer."""
+        return self._num_sprites
+
+    def get_texture(self) -> moderngl.Texture:
+        """Returns the texture that is bound to the renderer batch."""
+        return self._texture
 
     def append(self, sprite: Sprite) -> None:
         """Adds the sprite's data to the vertex array and saves the texture reference for later rendering.
         Throws an `TextureError` if the given sprite's texture does not the previous texture.
         """
-        if self.last_texture is None:
-            self.last_texture = sprite.texture
+        if self._texture is None:
+            self._texture = sprite.texture
 
-        if id(self.last_texture) != id(sprite.texture):
-            raise TextureError(expected=self.last_texture, found=sprite.texture)
+        if id(self._texture) != id(sprite.texture):
+            raise TextureError(expected=self._texture, found=sprite.texture)
 
-        self.renderer.data.extend(sprite.as_tuple())
-        self.renderer.num_sprites += 1
+        self._num_sprites += 1
+        self.data.extend(sprite.as_tuple())
+
+    def render(self, texture: moderngl.Texture, view_matrix: glm.mat4x4, projection_matrix: glm.mat4x4) -> None:
+        """Renders the vertex data as points using the given texture, view matrix and projection matrix."""
+        self._vbo.write(self.data)
+
+        texture.use(0)
+        self._program['view'].write(view_matrix)
+        self._program['projection'].write(projection_matrix)
+        self._program['sprite_texture'] = 0
+
+        self._vao.render(mode=moderngl.POINTS, vertices=self._num_sprites)
 
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -132,13 +132,13 @@ class Camera:
 
     center: as pygame.math.Vector2, defaults to (0, 0)
     rotation: as float in degree, defaults to 0
+    zoom: as float, defaults to 1
     """
 
     def __init__(self, context: moderngl.Context, cache: resources.Cache) -> None:
         """Creates the camera and sprite rendering capabilities."""
-        self.renderer = Renderer2D(context, cache, 1)
+        self._renderer = RenderBatch(context, cache, 1)
 
-        # set up camera
         self.center = pygame.math.Vector2(0, 0)
         self.rotation = 0.0
         self.zoom = 1.0
@@ -151,9 +151,11 @@ class Camera:
         self._m_proj = self._get_projection_matrix()
 
     def get_size(self) -> pygame.math.Vector2:
+        """Returns the size of the zoomed viewport."""
         return self._screen_size / self.zoom
 
     def get_rect(self) -> pygame.Rect:
+        """Returns a rectangle that describes the visible area."""
         rect = pygame.Rect(0, 0, *self.get_size())
         rect.center = self.center.copy()
         return rect
@@ -177,14 +179,13 @@ class Camera:
 
     def render(self, sprite: Sprite) -> None:
         """Render the given sprite."""
-        self.renderer.clear()
-        self.renderer.data.extend(sprite.as_tuple())
-        self.renderer.num_sprites = 1
-        self.renderer.render(sprite.texture, self._m_view, self._m_proj)
+        self._renderer.clear()
+        self._renderer.append(sprite)
+        self._renderer.render(sprite.texture, self._m_view, self._m_proj)
 
-    def render_batch(self, batch: Batch) -> None:
+    def render_batch(self, batch: RenderBatch) -> None:
         """Render the given batch."""
-        batch.renderer.render(batch.last_texture, self._m_view, self._m_proj)
+        batch.render(batch.get_texture(), self._m_view, self._m_proj)
 
     def render_particles(self, parts: particles.ParticleSystem) -> None:
         """Render the given particles."""
