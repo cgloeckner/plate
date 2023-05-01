@@ -9,13 +9,13 @@ uniform mat4 projection;
 in vec2 origin[];
 in vec2 size[];
 in float rotation[];
-in vec3 color[];
+in vec4 color[];
 in vec2 clip_offset[];
 in vec2 clip_size[];
 in float brightness[];
 
 out vec2 uv;
-out vec3 v_color;
+out vec4 v_color;
 out float v_brightness;
 
 void main() {

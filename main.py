@@ -24,39 +24,61 @@ class StarField:
         self.sprite.origin.y = 0
 
 
+class Fighter:
+    def __init__(self, cache: resources.Cache, particle_system: particles.ParticleSystem):
+        self.particle_system = particle_system
+
+        self.tex = cache.get_png('data/sprites/ship.png')
+        self.tex.filter = moderngl.NEAREST, moderngl.NEAREST
+
+        self.sprite = render.Sprite(self.tex, clip=pygame.Rect(0, 0, 32, 32))
+        self.forward = pygame.math.Vector2(0, 1)
+        self.velocity = pygame.math.Vector2()
+
+    def flash(self) -> None:
+        self.sprite.brightness = 5.0
+
+    def accelerate(self, elapsed_ms: int) -> None:
+        self.velocity = self.forward.rotate(self.sprite.rotation) * 0.5 * elapsed_ms
+
+        impact = self.forward.rotate(self.sprite.rotation)
+        pos = self.sprite.center.copy() - impact * 16
+        self.particle_system.emit(1, impact=impact, delta_degree=170, origin=pos, radius=5.0, speed=20.0,
+                                  color=pygame.Color('orange'))
+
+    def decelerate(self, elapsed_ms: int) -> None:
+        self.velocity *= (1 - 0.001 * elapsed_ms)
+
+    def rotate(self, elapsed_ms: int) -> None:
+        # NOTE: elapsed_ms is negative if rotating in the opposite direction
+        self.sprite.rotation += 0.05 * elapsed_ms
+
+    def update(self, elapsed_ms: int) -> None:
+        if self.sprite.brightness > 1.0:
+            self.sprite.brightness -= 0.01 * elapsed_ms
+            if self.sprite.brightness < 1.0:
+                self.sprite.brightness = 1.0
+
+        # apply velocity and let it slowly decay
+        self.sprite.center += self.velocity
+        self.velocity *= (1 - 0.001 * elapsed_ms)
+
+
 class DemoState(app.State):
     def __init__(self, engine: app.Engine):
         super().__init__(engine)
         self.cache = resources.Cache(engine.context)
-
-        self.tex0 = self.cache.get_png('data/sprites/ship.png')
-        self.tex0.filter = moderngl.NEAREST, moderngl.NEAREST
-        self.tex1 = self.cache.get_svg('data/sprites/ufo.svg', scale=5)
-        self.tex1.filter = moderngl.NEAREST, moderngl.NEAREST
-
         self.camera = render.Camera(engine.context, self.cache)
         self.gui = render.GuiCamera(engine.context, self.cache)
-
-        self.s1 = render.Sprite(self.tex0, clip=pygame.Rect(0, 0, 32, 32))
-
-        self.forward = pygame.math.Vector2(0, 1)
-        self.right = pygame.math.Vector2(1, 0)
-
-        self.s2 = render.Sprite(self.tex1, clip=pygame.Rect(0, 0, self.tex1.size[1], self.tex1.size[1]))
-        self.s2.center.y = 250
-
-        self.s3 = render.Sprite(self.tex1, clip=pygame.Rect(0, 0, self.tex1.size[1], self.tex1.size[1]))
-        self.s3.center.x = 150
-
-        self.v1 = pygame.math.Vector2(0, 0)
-
         self.parts = particles.ParticleSystem(self.engine.context, self.cache, 5000, 128)
 
+        # create starfield background
         w, h = pygame.display.get_window_size()
         self.starfield = StarField(self.engine.context, w, h, int(min(w, h) ** 0.5))
         self.starfield.sprite.clip.w *= 10
         self.starfield.sprite.clip.h *= 10
 
+        # create asteroids field
         self.asteroids = asteroids.AsteroidsField(self.engine.context, self.cache, 1000)
         for _ in range(1000):
             x = random.randrange(0, 1600 * 10)
@@ -66,43 +88,48 @@ class DemoState(app.State):
             self.asteroids.add_asteroid(pygame.math.Vector2(x, y), scale, direction)
 
         self.total_ms = 0
-
         self.fps = render.Text(self.engine.context, self.cache.get_font(font_size=30))
+
+        # create fighters
+        self.fighters = [Fighter(self.cache, self.parts) for _ in range(2)]
+        self.fighters[1].sprite.center.x -= 200
+        self.fighters[1].sprite.center.y -= 200
+        self.fighters[1].sprite.color = pygame.Color('red')
+        self.fighters[1].sprite.color.a = 96
+        #self.fighters[2].sprite.center.x += 200
+        #self.fighters[2].sprite.center.y -= 200
+        #self.fighters[2].sprite.color = pygame.Color('blue')
+        #self.fighters[2].sprite.color.a = 96
 
     def process_event(self, event: pygame.event.Event) -> None:
         if event.type == pygame.QUIT or (event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE):
             self.engine.pop()
 
-        if event.type == pygame.MOUSEBUTTONUP:
-            self.s1.brightness = 5.0
+    def update_enemy(self, fighter: Fighter, elapsed_ms: int) -> None:
+        direction = self.fighters[0].sprite.center - fighter.sprite.center
+        delta = fighter.forward.rotate(fighter.sprite.rotation).angle_to(direction)
+        if delta < 0:
+            fighter.rotate(-elapsed_ms * 10)
+        if delta > 0:
+            fighter.rotate(elapsed_ms * 10)
 
-    def update(self, elapsed_ms) -> None:
-        if self.s1.brightness > 1.0:
-            self.s1.brightness -= 0.01 * elapsed_ms
-            if self.s1.brightness < 1.0:
-                self.s1.brightness = 1.0
+        if self.total_ms < 100:
+            fighter.accelerate(elapsed_ms)
 
-        self.asteroids.update(elapsed_ms)
-
+    def update_player(self, fighter: Fighter, elapsed_ms: int) -> None:
         keys = pygame.key.get_pressed()
 
+        # basic controls
         if keys[pygame.K_w]:
-            self.v1 = self.forward.rotate(self.camera.rotation) * 0.5 * elapsed_ms
-
-            impact = self.forward.rotate(self.s1.rotation)
-            pos = self.s1.center.copy() - impact * 16
-            self.parts.emit(1, impact=impact, delta_degree=170, origin=pos, radius=5.0, speed=20.0,
-                            color=pygame.Color('orange'))
-
+            fighter.accelerate(elapsed_ms)
         if keys[pygame.K_s]:
-            # slow down
-            self.v1 *= (1 - 0.001 * elapsed_ms)
-
+            fighter.decelerate(elapsed_ms)
         if keys[pygame.K_q]:
-            self.camera.rotation += 0.05 * elapsed_ms
+            fighter.rotate(elapsed_ms)
         if keys[pygame.K_e]:
-            self.camera.rotation -= 0.05 * elapsed_ms
+            fighter.rotate(-elapsed_ms)
 
+        # zoom
         if keys[pygame.K_PLUS]:
             self.camera.zoom *= (1 + 0.001 * elapsed_ms)
             if self.camera.zoom > 5.0:
@@ -112,17 +139,23 @@ class DemoState(app.State):
             if self.camera.zoom < 0.1:
                 self.camera.zoom = 0.1
 
-        self.v1 *= (1 - 0.001 * elapsed_ms)
+        # let camera follow player
+        self.camera.center = fighter.sprite.center.copy()
+        self.camera.rotation = fighter.sprite.rotation
 
-        self.s1.rotation = self.camera.rotation
-        self.s1.center += self.v1
+    def update(self, elapsed_ms) -> None:
+        self.total_ms += elapsed_ms
 
-        self.camera.center = self.s1.center.copy()
+        self.asteroids.update(elapsed_ms)
+        self.update_player(self.fighters[0], elapsed_ms)
+        for index, f in enumerate(self.fighters):
+            if index > 0:
+                self.update_enemy(f, elapsed_ms)
+            f.update(elapsed_ms)
+
         self.camera.update()
-
         self.parts.update(elapsed_ms)
 
-        self.total_ms += elapsed_ms
         num_fps = int(self.engine.clock.get_fps())
         if self.total_ms > 250:
             self.fps.set_string(f'FPS: {num_fps}\n{len(self.parts)} Particles')
@@ -132,9 +165,8 @@ class DemoState(app.State):
         self.camera.render(self.starfield.sprite)
         self.camera.render_particles(self.parts)
         self.camera.render_batch(self.asteroids)
-        self.camera.render(self.s2)
-        self.camera.render(self.s3)
-        self.camera.render(self.s1)
+        for f in self.fighters:
+            self.camera.render(f.sprite)
 
         self.gui.render_text(self.fps)
 

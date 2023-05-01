@@ -21,7 +21,7 @@ class Sprite:
     origin: as pygame.math.Vector2, defaults to (0.5, 0.5)
     scale: as pygame.math.Vector2, defaults to either the clipping size (if provided) or the texture size (fallback)
     rotation: as float in degree, defaults to 0
-    color: as pygame.Color
+    color: as pygame.Color, defaults to 'white', but with alpha=0 of 255 (which gives 0% shift)
     texture: as provided
     clip: as pygame.Rect in pixel coordinates
     brightness: as float, defaults to 1.0
@@ -34,6 +34,7 @@ class Sprite:
         self.scale = pygame.math.Vector2(1, 1)
         self.rotation = 0.0
         self.color = pygame.Color('white')
+        self.color.a = 0
         self.brightness = 1.0
         self.clip = pygame.Rect(0, 0, *texture.size) if clip is None else clip
         self.texture = texture
@@ -41,7 +42,7 @@ class Sprite:
     def as_tuple(self) -> Tuple[float, ...]:
         """Returns the sprite data as tuple, where color and clipping rect are normalized."""
         size = pygame.math.Vector2(self.clip.size).elementwise() * self.scale
-        color = self.color.normalize()[:-1]
+        color = self.color.normalize()
         tex_size = pygame.math.Vector2(self.texture.size)
         clip_xy = pygame.math.Vector2(self.clip.topleft).elementwise() / tex_size
         clip_wh = pygame.math.Vector2(self.clip.size).elementwise() / tex_size
@@ -50,7 +51,7 @@ class Sprite:
     @staticmethod
     def get_types() -> str:
         """Returns a string of all used types for the provided variables inside the shader."""
-        return '2f 2f 2f 1f 3f 2f 2f 1f'
+        return '2f 2f 2f 1f 4f 2f 2f 1f'
 
     @staticmethod
     def get_variables() -> Tuple[str, ...]:
@@ -71,6 +72,7 @@ class Offset(IntEnum):
     COLOR_R = auto()
     COLOR_G = auto()
     COLOR_B = auto()
+    COLOR_A = auto()
     CLIP_X = auto()
     CLIP_Y = auto()
     CLIP_W = auto()
