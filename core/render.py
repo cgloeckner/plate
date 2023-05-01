@@ -9,6 +9,7 @@ import glm
 import array
 
 from typing import Optional, Tuple
+from enum import IntEnum
 
 from . import resources, particles
 
@@ -17,7 +18,7 @@ class Sprite:
     """Combines sprite data such as
 
     position: as pygame.math.Vector2, defaults to (0, 0)
-    size: as pygame.math.Vector2, defaults to either the clipping size (if provided) or the texture size (fallback)
+    scale: as pygame.math.Vector2, defaults to either the clipping size (if provided) or the texture size (fallback)
     rotation: as float in degree, defaults to 0
     color: as pygame.Color
     texture: as provided
@@ -45,6 +46,24 @@ class Sprite:
         return *self.center, *size, self.rotation, *color, *clip_xy, *clip_wh, self.brightness
 
 
+class Offset(IntEnum):
+    """Provides offsets for accessing individual data within the RenderBatch's array."""
+    POS_X = 0
+    POS_Y = 1
+    SIZE_X = 2
+    SIZE_Y = 3
+    ROTATION = 4
+    COLOR_R = 5
+    COLOR_G = 6
+    COLOR_B = 7
+    COLOR_A = 8
+    CLIP_X = 9
+    CLIP_Y = 10
+    CLIP_W = 11
+    CLIP_H = 12
+    BRIGHTNESS = 13
+
+
 # ----------------------------------------------------------------------------------------------------------------------
 
 
@@ -69,7 +88,7 @@ class RenderBatch:
     def __init__(self, context: moderngl.Context, cache: resources.Cache, max_num_sprites: int) -> None:
         """Initializes buffers for a maximum number of sprites."""
         self._context = context
-        self._vbo = context.buffer(reserve=14 * 4 * max_num_sprites)
+        self._vbo = context.buffer(reserve=len(Offset) * 4 * max_num_sprites)
 
         self._program = context.program(vertex_shader=cache.get_shader('data/glsl/sprite.vert'),
                                         geometry_shader=cache.get_shader('data/glsl/sprite.geom'),

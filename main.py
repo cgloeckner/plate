@@ -112,7 +112,8 @@ class DemoState(app.State):
 
             impact = self.forward.rotate(self.s1.rotation)
             pos = self.s1.center.copy() - impact * 32
-            self.parts.emit(1, impact, 170, pos, 5.0, 20.0, pygame.Color('orange'))
+            self.parts.emit(1, impact=impact, delta_degree=170, origin=pos, radius=5.0, speed=20.0,
+                            color=pygame.Color('orange'))
 
         if keys[pygame.K_s]:
             # slow down

@@ -8,6 +8,7 @@ import random
 import glm
 
 from typing import Tuple
+from enum import IntEnum
 
 from . import resources
 
@@ -34,6 +35,25 @@ def random_particle(impact: pygame.math.Vector2, delta_degree: float, origin: py
     return x, y, direction.x, direction.y, radius, 1 + random.random(), *color_tuple
 
 
+class Offset(IntEnum):
+    """Provides offsets for accessing individual data within the ParticleSystem's array."""
+    POS_X = 0
+    POS_Y = 1
+    DIR_X = 2
+    DIR_Y = 3
+    SIZE = 4
+    SCALE = 5
+    COLOR_R = 6
+    COLOR_G = 7
+    COLOR_B = 8
+    COLOR_A = 9
+
+
+SPEED: float = 0.01
+SHRINK: float = 0.0015
+FADE_THRESHOLD: float = 0.05
+
+
 class ParticleSystem:
     """Manages creating, updating and rendering lots of circular particles."""
 
@@ -44,7 +64,7 @@ class ParticleSystem:
         """
         self._max_num_particles = max_num_particles
 
-        self._vbo = context.buffer(reserve=9 * 4 * self._max_num_particles)
+        self._vbo = context.buffer(reserve=len(Offset) * 4 * self._max_num_particles)
         self._program = context.program(vertex_shader=cache.get_shader('data/glsl/particles.vert'),
                                         geometry_shader=cache.get_shader('data/glsl/particles.geom'),
                                         fragment_shader=cache.get_shader('data/glsl/particles.frag'))
@@ -62,13 +82,13 @@ class ParticleSystem:
         self._data = array.array('f')
         self._num_particles = 0
 
-    def emit(self, count: int, *args) -> None:
+    def emit(self, count: int, **kwargs) -> None:
         """Emit a given number of particles using data in `*args`, forwarded to `random_particle`."""
         for _ in range(count):
-            self._data.extend(random_particle(*args))
+            self._data.extend(random_particle(**kwargs))
         self._num_particles += count
 
-    def get_particle_count(self) -> int:
+    def __len__(self) -> int:
         """Returns the number of particles that are currently in use."""
         return self._num_particles
 
@@ -81,21 +101,22 @@ class ParticleSystem:
         # update all particles
         faded_indices = array.array('I')
         for index in range(self._num_particles):
-            self._data[index * 10] += self._data[index * 10 + 2] * elapsed_ms * 0.01
-            self._data[index * 10 + 1] += self._data[index * 10 + 3] * elapsed_ms * 0.01
-            self._data[index * 10 + 5] *= (1 - 0.0015 * elapsed_ms)
-            if self._data[index * 10 + 5] < 0.05:
+            offset = index * len(Offset)
+            self._data[offset + Offset.POS_X] += self._data[offset + Offset.DIR_X] * elapsed_ms * SPEED
+            self._data[offset + Offset.POS_Y] += self._data[offset + Offset.DIR_Y] * elapsed_ms * SPEED
+            self._data[offset + Offset.SCALE] *= (1 - SHRINK * elapsed_ms)
+            if self._data[offset + Offset.SCALE] < FADE_THRESHOLD:
                 # mark particle as faded
                 faded_indices.append(index)
 
         # delete faded particles
         last_index = self._num_particles - 1
         for index in faded_indices:
-            for offset in range(10):
-                self._data[index * 10 + offset] = self._data[last_index * 10 + offset]
+            for offset in Offset:
+                self._data[index * len(Offset) + offset] = self._data[last_index * len(Offset) + offset]
             last_index -= 1
         self._num_particles = last_index + 1
-        for _ in range(len(faded_indices) * 10):
+        for _ in range(len(faded_indices) * len(Offset)):
             self._data.pop()
 
     def render(self, view_matrix: glm.mat4x4, projection_matrix: glm.mat4x4) -> None:
@@ -107,4 +128,3 @@ class ParticleSystem:
         self._program['projection'].write(projection_matrix)
 
         self._vao.render(mode=moderngl.POINTS, vertices=self._num_particles)
-
