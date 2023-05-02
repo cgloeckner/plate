@@ -3,7 +3,7 @@
 
 import pygame
 import moderngl
-import array
+import numpy
 import random
 import glm
 
@@ -11,28 +11,6 @@ from typing import Tuple
 from enum import IntEnum, auto
 
 from . import resources
-
-
-def random_particle(impact: pygame.math.Vector2, delta_degree: float, origin: pygame.math.Vector2, radius: float,
-                    speed: float, color: pygame.Color) -> Tuple[float, ...]:
-    """Creates a tuple with particle data in the following order:
-
-    Position: based on `origin`, randomly altered using the `radius`
-    Direction: based on `impact`, randomly rotated to differ from `impact` by at least `delta_degree`, applied `speed`
-    Radius: based on `radius`, randomly altered
-    Color: based on `color`, normalized
-    """
-    x, y = origin
-    x += random.uniform(-radius, radius)
-    y += random.uniform(-radius, radius)
-
-    angle = random.uniform(delta_degree, 360-delta_degree)
-    direction = impact.rotate(angle)
-    direction *= random.uniform(0.01, 2 * speed)
-
-    color_tuple = color.normalize()[:-1]
-
-    return x, y, direction.x, direction.y, radius, 1 + random.random(), *color_tuple
 
 
 class Offset(IntEnum):
@@ -62,12 +40,14 @@ class ParticleSystem:
         circle with the given texture resolution.
         """
         self._max_num_particles = max_num_particles
+        self._data = numpy.zeros((max_num_particles, len(Offset)), dtype=numpy.float32)
 
-        self._vbo = context.buffer(reserve=len(Offset) * 4 * self._max_num_particles)
         self._program = context.program(vertex_shader=cache.get_shader('data/glsl/particles.vert'),
                                         geometry_shader=cache.get_shader('data/glsl/particles.geom'),
                                         fragment_shader=cache.get_shader('data/glsl/particles.frag'))
         self._program['sprite_texture'] = 0
+
+        self._vbo = context.buffer(self._data.tobytes())
         self._vao = context.vertex_array(self._program,
                                          [(self._vbo, '2f 2f 1f 1f 3f', 'in_position', 'in_direction', 'in_size',
                                           'in_scale', 'in_color')])
@@ -77,18 +57,35 @@ class ParticleSystem:
         pygame.draw.circle(surface, pygame.Color('white'), (resolution//2, resolution//2), resolution//2)
         self._texture = resources.texture_from_surface(context, surface)
 
-        self._data = array.array('f')
-        self._num_particles = 0
-
-    def emit(self, count: int, **kwargs) -> None:
-        """Emit a given number of particles using data in `*args`, forwarded to `random_particle`."""
-        for _ in range(count):
-            self._data.extend(random_particle(**kwargs))
-        self._num_particles += count
-
     def __len__(self) -> int:
         """Returns the number of particles that are currently in use."""
-        return self._num_particles
+        return len(self._data)
+
+    def emit(self, impact: pygame.math.Vector2, delta_degree: float, origin: pygame.math.Vector2,
+             radius: float, speed: float, color: pygame.Color) -> None:
+        """Emit a single particle using from the given data:
+
+        Position: based on `origin`, randomly altered using the `radius`
+        Direction: based on `impact`, randomly rotated to differ from `impact` by at least `delta_degree`, applied `speed`
+        Radius: based on `radius`, randomly altered
+        Color: based on `color`, normalized
+        """
+        angle = random.uniform(delta_degree, 360 - delta_degree)
+        velocity = impact.rotate(angle) * random.uniform(0.01, 2 * speed)
+        color_norm = color.normalize()[:-1]
+
+        self._data.resize((self._data.shape[0] + 1, self._data.shape[1]), refcheck=False)
+        index = self._data.shape[0] - 1
+
+        self._data[index, Offset.POS_X] = origin.x + random.uniform(-radius, radius)
+        self._data[index, Offset.POS_Y] = origin.y + random.uniform(-radius, radius)
+        self._data[index, Offset.DIR_X] = velocity.x
+        self._data[index, Offset.DIR_Y] = velocity.y
+        self._data[index, Offset.SIZE] = radius
+        self._data[index, Offset.SCALE] = 1 + random.random()
+        self._data[index, Offset.COLOR_R] = color_norm[0]
+        self._data[index, Offset.COLOR_G] = color_norm[1]
+        self._data[index, Offset.COLOR_B] = color_norm[2]
 
     def update(self, elapsed_ms: int) -> None:
         """Updates all particles.
@@ -96,33 +93,25 @@ class ParticleSystem:
         Each particle is moved using its direction vector and is shrunk in scale. As the scale falls below a certain
         threshold, it is removed. The order of particles is not kept when particles are removed.
         """
-        # update all particles
-        faded_indices = array.array('I')
-        for index in range(self._num_particles):
-            offset = index * len(Offset)
-            self._data[offset + Offset.POS_X] += self._data[offset + Offset.DIR_X] * elapsed_ms * SPEED
-            self._data[offset + Offset.POS_Y] += self._data[offset + Offset.DIR_Y] * elapsed_ms * SPEED
-            self._data[offset + Offset.SCALE] *= (1 - SHRINK * elapsed_ms)
-            if self._data[offset + Offset.SCALE] < FADE_THRESHOLD:
-                # mark particle as faded
-                faded_indices.append(index)
+        # update positions
+        displacement = self._data[:, Offset.DIR_X:Offset.DIR_Y] * elapsed_ms * SPEED
+        self._data[:, Offset.POS_X:Offset.POS_Y] += displacement
 
-        # delete faded particles
-        last_index = self._num_particles - 1
-        for index in faded_indices:
-            for offset in Offset:
-                self._data[index * len(Offset) + offset] = self._data[last_index * len(Offset) + offset]
-            last_index -= 1
-        self._num_particles = last_index + 1
-        for _ in range(len(faded_indices) * len(Offset)):
-            self._data.pop()
+        # update scales
+        # self._data[:, Offset.SCALE] *= (1 - SHRINK * elapsed_ms)
+        scale_decay = numpy.exp(-SHRINK * elapsed_ms)
+        self._data[:, Offset.SCALE] *= scale_decay
+
+        # remove particles with scale below threshold
+        self._data = self._data[self._data[:, Offset.SCALE] >= FADE_THRESHOLD]
 
     def render(self, view_matrix: glm.mat4x4, projection_matrix: glm.mat4x4) -> None:
         """Render the particles using the given view and projection matrices."""
-        self._vbo.write(self._data)
+        self._vbo.clear()
+        self._vbo.write(self._data.tobytes())
 
         self._texture.use(0)
         self._program['view'].write(view_matrix)
         self._program['projection'].write(projection_matrix)
 
-        self._vao.render(mode=moderngl.POINTS, vertices=self._num_particles)
+        self._vao.render(mode=moderngl.POINTS)

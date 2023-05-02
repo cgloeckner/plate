@@ -43,7 +43,7 @@ class Fighter:
 
         impact = self.forward.rotate(self.sprite.rotation)
         pos = self.sprite.center.copy() - impact * 16
-        self.particle_system.emit(1, impact=impact, delta_degree=170, origin=pos, radius=5.0, speed=20.0,
+        self.particle_system.emit(impact=impact, delta_degree=170, origin=pos, radius=5.0, speed=20.0,
                                   color=pygame.Color('orange'))
 
     def decelerate(self, elapsed_ms: int) -> None:
@@ -70,7 +70,7 @@ class DemoState(app.State):
         self.cache = resources.Cache(engine.context)
         self.camera = render.Camera(engine.context, self.cache)
         self.gui = render.GuiCamera(engine.context, self.cache)
-        self.parts = particles.ParticleSystem(self.engine.context, self.cache, 5000, 128)
+        self.parts = particles.ParticleSystem(self.engine.context, self.cache, 50000, 128)
 
         # create starfield background
         w, h = pygame.display.get_window_size()
@@ -91,15 +91,12 @@ class DemoState(app.State):
         self.fps = render.Text(self.engine.context, self.cache.get_font(font_size=30))
 
         # create fighters
-        self.fighters = [Fighter(self.cache, self.parts) for _ in range(2)]
-        self.fighters[1].sprite.center.x -= 200
-        self.fighters[1].sprite.center.y -= 200
-        self.fighters[1].sprite.color = pygame.Color('red')
-        self.fighters[1].sprite.color.a = 96
-        #self.fighters[2].sprite.center.x += 200
-        #self.fighters[2].sprite.center.y -= 200
-        #self.fighters[2].sprite.color = pygame.Color('blue')
-        #self.fighters[2].sprite.color.a = 96
+        self.fighters = [Fighter(self.cache, self.parts) for _ in range(15)]
+        for i in range(14):
+            self.fighters[i+1].sprite.center.x -= 200 + i * 50
+            self.fighters[i+1].sprite.center.y -= 200 + i * 50
+            self.fighters[i+1].sprite.color = pygame.Color('red')
+            self.fighters[i+1].sprite.color.a = 96
 
     def process_event(self, event: pygame.event.Event) -> None:
         if event.type == pygame.QUIT or (event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE):
