@@ -3,3 +3,4 @@ moderngl~=5.8.2
 PyGLM~=2.7.0
 imgui~=2.0.0
 CairoSVG~=2.7.0
+numpy~=1.24.3

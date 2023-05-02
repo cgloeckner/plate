@@ -7,7 +7,6 @@ import numpy
 import random
 import glm
 
-from typing import Tuple
 from enum import IntEnum, auto
 
 from . import resources
@@ -66,7 +65,7 @@ class ParticleSystem:
         """Emit a single particle using from the given data:
 
         Position: based on `origin`, randomly altered using the `radius`
-        Direction: based on `impact`, randomly rotated to differ from `impact` by at least `delta_degree`, applied `speed`
+        Direction: randomly rotated to differ from `impact` by at least `delta_degree`, applied `speed`
         Radius: based on `radius`, randomly altered
         Color: based on `color`, normalized
         """
