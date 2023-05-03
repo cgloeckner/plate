@@ -7,12 +7,15 @@ from enum import IntEnum, auto
 
 
 SPEED: float = 0.01
+VELOCITY_FADE: float = 0.0005
 
 
 class Sprite:
     """Combines sprite data such as
 
+    # FIXME: make this more useful ._.
     position: as pygame.math.Vector2, defaults to (0, 0)
+    velocity: as pygame.math.Vector2, defaults to (0, 0)
     origin: as pygame.math.Vector2, defaults to (0.5, 0.5)
     scale: as pygame.math.Vector2, defaults to either the clipping size (if provided) or the texture size (fallback)
     rotation: as float in degree, defaults to 0
@@ -25,6 +28,7 @@ class Sprite:
     def __init__(self, texture: moderngl.Texture, clip: Optional[pygame.Rect] = None):
         """Creates a sprite using a texture and an optional clipping rectangle."""
         self.center = pygame.math.Vector2(0, 0)
+        self.velocity = pygame.math.Vector2(0, 0)
         self.origin = pygame.math.Vector2(0.5, 0.5)
         self.scale = pygame.math.Vector2(1, 1)
         self.rotation = 0.0
@@ -33,7 +37,6 @@ class Sprite:
         self.brightness = 1.0
         self.clip = pygame.Rect(0, 0, *texture.size) if clip is None else clip
         self.texture = texture
-        self.velocity = pygame.math.Vector2(0, 0)
 
     def to_array(self) -> numpy.ndarray:
         # prepare data
@@ -113,5 +116,7 @@ class SpriteArray:
 
     def update(self, elapsed_ms: int) -> None:
         # update positions
-        displacement = self.data[:, Offset.VEL_X:Offset.VEL_Y] * elapsed_ms * SPEED
-        self.data[:, Offset.POS_X:Offset.POS_Y] += displacement
+        self.data[:, Offset.POS_X:Offset.POS_Y+1] += self.data[:, Offset.VEL_X:Offset.VEL_Y+1] * elapsed_ms
+
+        # decrease velocity
+        self.data[:, Offset.VEL_X:Offset.VEL_Y+1] *= numpy.exp(-VELOCITY_FADE * elapsed_ms)

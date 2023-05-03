@@ -106,7 +106,6 @@ class ParticleSystem:
         self._data[:, Offset.POS_X:Offset.POS_Y] += displacement
 
         # update scales
-        # self._data[:, Offset.SCALE] *= (1 - SHRINK * elapsed_ms)
         scale_decay = numpy.exp(-SHRINK * elapsed_ms)
         self._data[:, Offset.SCALE] *= scale_decay
 

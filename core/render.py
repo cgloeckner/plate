@@ -39,8 +39,8 @@ class RenderBatch:
                                         fragment_shader=cache.get_shader('data/glsl/sprite.frag'))
         self._vao = context.vertex_array(self._program,
                                          [(self._vbo, '2f 2f 2f 2f 1f 4f 2f 2f 1f', 'in_position', 'in_velocity',
-                                           'in_origin', 'in_size', 'in_rotation', 'in_color', 'in_clip_offset',
-                                           'in_clip_size', 'in_brightness')])
+                                           'in_origin', 'in_size', 'in_rotation', 'in_color',
+                                           'in_clip_offset', 'in_clip_size', 'in_brightness')])
 
         self._num_sprites = 0
         self._texture = None
