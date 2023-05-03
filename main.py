@@ -43,8 +43,7 @@ class Fighter:
 
         impact = self.forward.rotate(self.sprite.rotation)
         pos = self.sprite.center.copy() - impact * 16
-        self.particle_system.emit(impact=impact, delta_degree=170, origin=pos, radius=5.0, speed=20.0,
-                                  color=pygame.Color('orange'))
+        self.particle_system.emit(origin=pos, radius=5.0, color=pygame.Color('orange'), impact=impact, delta_degree=170)
 
     def decelerate(self, elapsed_ms: int) -> None:
         self.velocity *= (1 - 0.001 * elapsed_ms)

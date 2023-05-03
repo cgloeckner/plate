@@ -14,12 +14,14 @@ from . import resources
 
 class Offset(IntEnum):
     """Provides offsets for accessing individual data within the ParticleSystem's array."""
+    # dynamic data
     POS_X = 0
     POS_Y = auto()
     DIR_X = auto()
     DIR_Y = auto()
-    SIZE = auto()
     SCALE = auto()
+    # static data
+    SIZE = auto()
     COLOR_R = auto()
     COLOR_G = auto()
     COLOR_B = auto()
@@ -39,17 +41,17 @@ class ParticleSystem:
         circle with the given texture resolution.
         """
         self._max_num_particles = max_num_particles
-        self._data = numpy.zeros((max_num_particles, len(Offset)), dtype=numpy.float32)
+        self._data = numpy.zeros((0, len(Offset)), dtype=numpy.float32)
 
         self._program = context.program(vertex_shader=cache.get_shader('data/glsl/particles.vert'),
                                         geometry_shader=cache.get_shader('data/glsl/particles.geom'),
                                         fragment_shader=cache.get_shader('data/glsl/particles.frag'))
         self._program['sprite_texture'] = 0
 
-        self._vbo = context.buffer(self._data.tobytes())
+        self._vbo = context.buffer(reserve=max_num_particles * len(Offset), dynamic=True)
         self._vao = context.vertex_array(self._program,
-                                         [(self._vbo, '2f 2f 1f 1f 3f', 'in_position', 'in_direction', 'in_size',
-                                          'in_scale', 'in_color')])
+                                         [(self._vbo, '2f 2f 1f 1f 3f', 'in_position', 'in_direction', 'in_scale',
+                                           'in_size', 'in_color')])
 
         # particle circle texture
         surface = pygame.Surface((resolution, resolution), flags=pygame.SRCALPHA)
@@ -60,22 +62,26 @@ class ParticleSystem:
         """Returns the number of particles that are currently in use."""
         return len(self._data)
 
-    def emit(self, impact: pygame.math.Vector2, delta_degree: float, origin: pygame.math.Vector2,
-             radius: float, speed: float, color: pygame.Color) -> None:
-        """Emit a single particle using from the given data:
+    def emit(self, origin: pygame.math.Vector2, radius: float, color: pygame.Color, impact: pygame.math.Vector2,
+             delta_degree: float) -> None:
+        """Emit a single particle using the given data.
 
-        Position: based on `origin`, randomly altered using the `radius`
-        Direction: randomly rotated to differ from `impact` by at least `delta_degree`, applied `speed`
-        Radius: based on `radius`, randomly altered
-        Color: based on `color`, normalized
+        The particle is created with the given origin, radius and color. The given impact vector specifies from which
+        direction the particle is emitted. As default, the particle moves into the opposite direction (away from the
+        impact vector). The velocity vector is randomly rotated within the given delta_degree value.
         """
-        angle = random.uniform(delta_degree, 360 - delta_degree)
-        velocity = impact.rotate(angle) * random.uniform(0.01, 2 * speed)
+        # normalize color but skip alpha value
         color_norm = color.normalize()[:-1]
 
+        # randomize the particle's velocity vector
+        angle = 180 + random.uniform(-delta_degree, delta_degree)
+        velocity = impact.rotate(angle) * random.uniform(0.01, 2 * SPEED)
+
+        # resize array
         self._data.resize((self._data.shape[0] + 1, self._data.shape[1]), refcheck=False)
         index = self._data.shape[0] - 1
 
+        # create particle data
         self._data[index, Offset.POS_X] = origin.x + random.uniform(-radius, radius)
         self._data[index, Offset.POS_Y] = origin.y + random.uniform(-radius, radius)
         self._data[index, Offset.DIR_X] = velocity.x
