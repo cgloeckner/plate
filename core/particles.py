@@ -48,7 +48,7 @@ class ParticleSystem:
                                         fragment_shader=cache.get_shader('data/glsl/particles.frag'))
         self._program['sprite_texture'] = 0
 
-        self._vbo = context.buffer(reserve=max_num_particles * len(Offset), dynamic=True)
+        self._vbo = context.buffer(reserve=max_num_particles * len(Offset) * 4, dynamic=True)
         self._vao = context.vertex_array(self._program,
                                          [(self._vbo, '2f 2f 1f 1f 3f', 'in_position', 'in_direction', 'in_scale',
                                            'in_size', 'in_color')])
@@ -70,6 +70,9 @@ class ParticleSystem:
         direction the particle is emitted. As default, the particle moves into the opposite direction (away from the
         impact vector). The velocity vector is randomly rotated within the given delta_degree value.
         """
+        if len(self) == self._max_num_particles:
+            return
+
         # normalize color but skip alpha value
         color_norm = color.normalize()[:-1]
 

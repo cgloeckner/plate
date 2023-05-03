@@ -6,102 +6,8 @@ based on https://github.com/moderngl/moderngl/blob/master/examples/geometry_shad
 import pygame
 import moderngl
 import glm
-import array
 
-from typing import Optional, Tuple
-from enum import IntEnum, auto
-
-from . import resources, particles
-
-
-class Sprite:
-    """Combines sprite data such as
-
-    position: as pygame.math.Vector2, defaults to (0, 0)
-    origin: as pygame.math.Vector2, defaults to (0.5, 0.5)
-    scale: as pygame.math.Vector2, defaults to either the clipping size (if provided) or the texture size (fallback)
-    rotation: as float in degree, defaults to 0
-    color: as pygame.Color, defaults to 'white', but with alpha=0 of 255 (which gives 0% shift)
-    texture: as provided
-    clip: as pygame.Rect in pixel coordinates
-    brightness: as float, defaults to 1.0
-    """
-
-    def __init__(self, texture: moderngl.Texture, clip: Optional[pygame.Rect] = None):
-        """Creates a sprite using a texture and an optional clipping rectangle."""
-        self.center = pygame.math.Vector2(0, 0)
-        self.origin = pygame.math.Vector2(0.5, 0.5)
-        self.scale = pygame.math.Vector2(1, 1)
-        self.rotation = 0.0
-        self.color = pygame.Color('white')
-        self.color.a = 0
-        self.brightness = 1.0
-        self.clip = pygame.Rect(0, 0, *texture.size) if clip is None else clip
-        self.texture = texture
-
-    def as_tuple(self) -> Tuple[float, ...]:
-        """Returns the sprite data as tuple, where color and clipping rect are normalized."""
-        size = pygame.math.Vector2(self.clip.size).elementwise() * self.scale
-        color = self.color.normalize()
-        tex_size = pygame.math.Vector2(self.texture.size)
-        clip_xy = pygame.math.Vector2(self.clip.topleft).elementwise() / tex_size
-        clip_wh = pygame.math.Vector2(self.clip.size).elementwise() / tex_size
-        return *self.center, *self.origin, *size, self.rotation, *color, *clip_xy, *clip_wh, self.brightness
-
-    @staticmethod
-    def get_types() -> str:
-        """Returns a string of all used types for the provided variables inside the shader."""
-        return '2f 2f 2f 1f 4f 2f 2f 1f'
-
-    @staticmethod
-    def get_variables() -> Tuple[str, ...]:
-        """Returns a tuple of strings for the variables names inside the shader."""
-        return 'in_position', 'in_origin', 'in_size', 'in_rotation', 'in_color', 'in_clip_offset', 'in_clip_size', \
-            'in_brightness'
-
-
-class Offset(IntEnum):
-    """Provides offsets for accessing individual data within the RenderBatch's array."""
-    POS_X = 0
-    POS_Y = auto()
-    ORIGIN_X = auto()
-    ORIGIN_Y = auto()
-    SIZE_X = auto()
-    SIZE_Y = auto()
-    ROTATION = auto()
-    COLOR_R = auto()
-    COLOR_G = auto()
-    COLOR_B = auto()
-    COLOR_A = auto()
-    CLIP_X = auto()
-    CLIP_Y = auto()
-    CLIP_W = auto()
-    CLIP_H = auto()
-    BRIGHTNESS = auto()
-
-
-# ----------------------------------------------------------------------------------------------------------------------
-
-
-class Text:
-    def __init__(self, context: moderngl.Context, font: pygame.font.Font):
-        self._context = context
-        self._font = font
-        self.sprite: Optional[Sprite] = None
-
-    def set_string(self, text: str, antialias: bool = True, color: pygame.Color = pygame.Color('white')) -> None:
-        surface = self._font.render(text, antialias, color)
-        texture = resources.texture_from_surface(self._context, surface)
-
-        if self.sprite is not None:
-            self.sprite.texture.release()
-
-        self.sprite = Sprite(texture)
-        self.sprite.origin.x = 0
-        self.sprite.origin.y = 0
-
-
-# ----------------------------------------------------------------------------------------------------------------------
+from . import resources, particles, sprite, text
 
 
 class TextureError(Exception):
@@ -122,26 +28,29 @@ class RenderBatch:
     The data array is publicly available to allow for in place manipulation (e.g. interpolating positions).
     """
 
-    def __init__(self, context: moderngl.Context, cache: resources.Cache, max_num_sprites: int) -> None:
+    def __init__(self, context: moderngl.Context, cache: resources.Cache, max_num_sprites: int,
+                 sprite_array: sprite.SpriteArray) -> None:
         """Initializes buffers for a maximum number of sprites."""
         self._max_num_sprites = max_num_sprites
 
-        self._vbo = context.buffer(reserve=len(Offset) * 4 * max_num_sprites)
+        self._vbo = context.buffer(reserve=len(sprite.Offset) * 4 * max_num_sprites, dynamic=True)
         self._program = context.program(vertex_shader=cache.get_shader('data/glsl/sprite.vert'),
                                         geometry_shader=cache.get_shader('data/glsl/sprite.geom'),
                                         fragment_shader=cache.get_shader('data/glsl/sprite.frag'))
         self._vao = context.vertex_array(self._program,
-                                         [(self._vbo, Sprite.get_types(), *Sprite.get_variables())])
+                                         [(self._vbo, '2f 2f 2f 2f 1f 4f 2f 2f 1f', 'in_position', 'in_velocity',
+                                           'in_origin', 'in_size', 'in_rotation', 'in_color', 'in_clip_offset',
+                                           'in_clip_size', 'in_brightness')])
 
         self._num_sprites = 0
         self._texture = None
-        self.data = array.array('f')
+        self._data = sprite_array
 
     def clear(self) -> None:
         """Resets the buffer data."""
         self._num_sprites = 0
         self._texture = None
-        self.data = array.array('f')
+        self._data.clear()
 
     def __len__(self) -> int:
         """Returns the number of sprites that were appended to the renderer."""
@@ -151,29 +60,29 @@ class RenderBatch:
         """Returns the texture that is bound to the renderer batch."""
         return self._texture
 
-    def append(self, sprite: Sprite) -> None:
+    def add(self, s: sprite.Sprite) -> None:
         """Adds the sprite's data to the vertex array and saves the texture reference for later rendering.
         Throws an `TextureError` if the given sprite's texture does not the previous texture.
         """
         if self._texture is None:
-            self._texture = sprite.texture
+            self._texture = s.texture
 
-        if id(self._texture) != id(sprite.texture):
-            raise TextureError(expected=self._texture, found=sprite.texture)
+        if id(self._texture) != id(s.texture):
+            raise TextureError(expected=self._texture, found=s.texture)
 
         self._num_sprites += 1
-        self.data.extend(sprite.as_tuple())
+        self._data.add(s)
 
     def render(self, texture: moderngl.Texture, view_matrix: glm.mat4x4, projection_matrix: glm.mat4x4) -> None:
         """Renders the vertex data as points using the given texture, view matrix and projection matrix."""
-        self._vbo.write(self.data)
+        self._vbo.write(self._data.to_bytes())
 
         texture.use(0)
         self._program['view'].write(view_matrix)
         self._program['projection'].write(projection_matrix)
         self._program['sprite_texture'] = 0
 
-        self._vao.render(mode=moderngl.POINTS, vertices=self._num_sprites)
+        self._vao.render(mode=moderngl.POINTS)
 
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -190,7 +99,8 @@ class Camera:
 
     def __init__(self, context: moderngl.Context, cache: resources.Cache) -> None:
         """Creates the camera and sprite rendering capabilities."""
-        self._renderer = RenderBatch(context, cache, 1)
+        self._data = sprite.SpriteArray()
+        self._renderer = RenderBatch(context, cache, 1, self._data)
 
         self.center = pygame.math.Vector2(0, 0)
         self.rotation = 0.0
@@ -230,19 +140,19 @@ class Camera:
         self._m_view = self._get_view_matrix()
         self._m_proj = self._get_projection_matrix()
 
-    def render(self, sprite: Sprite) -> None:
+    def render(self, s: sprite.Sprite) -> None:
         """Render the given sprite."""
         self._renderer.clear()
-        self._renderer.append(sprite)
-        self._renderer.render(sprite.texture, self._m_view, self._m_proj)
+        self._renderer.add(s)
+        self._renderer.render(s.texture, self._m_view, self._m_proj)
 
-    def render_text(self, text: Text) -> None:
-        if text.sprite is None:
+    def render_text(self, t: text.Text) -> None:
+        if t.sprite is None:
             return
 
         self._renderer.clear()
-        self._renderer.append(text.sprite)
-        self._renderer.render(text.sprite.texture, self._m_view, self._m_proj)
+        self._renderer.add(t.sprite)
+        self._renderer.render(t.sprite.texture, self._m_view, self._m_proj)
 
     def render_batch(self, batch: RenderBatch) -> None:
         """Render the given batch."""

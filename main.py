@@ -2,8 +2,7 @@ import pygame
 import moderngl
 import random
 
-from core import app, resources, particles, render
-import asteroids
+from core import app, resources, particles, render, sprite, text
 
 
 class StarField:
@@ -19,9 +18,32 @@ class StarField:
         self.texture = resources.texture_from_surface(context, surface)
         self.texture.filter = moderngl.NEAREST, moderngl.NEAREST
 
-        self.sprite = render.Sprite(self.texture)
+        self.sprite = sprite.Sprite(self.texture)
         self.sprite.origin.x = 0
         self.sprite.origin.y = 0
+
+
+class AsteroidsField(render.RenderBatch):
+    def __init__(self, context: moderngl.Context, cache: resources.Cache, field_size: int):
+        self.sprites = sprite.SpriteArray()
+        super().__init__(context, cache, field_size, self.sprites)
+
+        self.tex = cache.get_svg('data/sprites/asteroid.svg', scale=10)
+        self.tex.filter = moderngl.NEAREST, moderngl.NEAREST
+
+    def add_asteroid(self, center: pygame.math.Vector2, scale: float, velocity: pygame.math.Vector2) -> None:
+        s = sprite.Sprite(self.tex)
+        s.center = center
+        s.rotation = random.uniform(0.0, 360.0)
+        s.scale *= scale / 10
+        s.velocity = velocity
+        self.add(s)
+
+    def update(self, elapsed_ms: int) -> None:
+        self.sprites.update(elapsed_ms)
+
+        # update rotation
+        self.sprites.data[:, sprite.Offset.ROTATION] += elapsed_ms * 0.01
 
 
 class Fighter:
@@ -31,7 +53,7 @@ class Fighter:
         self.tex = cache.get_png('data/sprites/ship.png')
         self.tex.filter = moderngl.NEAREST, moderngl.NEAREST
 
-        self.sprite = render.Sprite(self.tex, clip=pygame.Rect(0, 0, 32, 32))
+        self.sprite = sprite.Sprite(self.tex, clip=pygame.Rect(0, 0, 32, 32))
         self.forward = pygame.math.Vector2(0, 1)
         self.velocity = pygame.math.Vector2()
 
@@ -78,7 +100,7 @@ class DemoState(app.State):
         self.starfield.sprite.clip.h *= 10
 
         # create asteroids field
-        self.asteroids = asteroids.AsteroidsField(self.engine.context, self.cache, 1000)
+        self.asteroids = AsteroidsField(self.engine.context, self.cache, 1000)
         for _ in range(1000):
             x = random.randrange(0, 1600 * 10)
             y = random.randrange(0, 900 * 10)
@@ -87,7 +109,7 @@ class DemoState(app.State):
             self.asteroids.add_asteroid(pygame.math.Vector2(x, y), scale, direction)
 
         self.total_ms = 0
-        self.fps = render.Text(self.engine.context, self.cache.get_font(font_size=30))
+        self.fps = text.Text(self.engine.context, self.cache.get_font(font_size=30))
 
         # create fighters
         self.fighters = [Fighter(self.cache, self.parts) for _ in range(15)]

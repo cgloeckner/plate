@@ -1,6 +1,7 @@
 import unittest
 import pygame
 import moderngl
+import glm
 
 from core import resources, particles
 
@@ -18,6 +19,21 @@ class ParticlesTest(unittest.TestCase):
         self.sys.emit(origin=pygame.math.Vector2(2, 3), radius=5.0, color=pygame.Color('red'),
                       impact=pygame.math.Vector2(0, 1), delta_degree=90)
         self.assertEqual(len(self.sys), 1)
+        self.assertEqual(len(self.sys._data.tobytes()), 1 * len(particles.Offset) * 4)
+
+        # can emit up to the maximum number of particles
+        for _ in range(4999):
+            self.sys.emit(origin=pygame.math.Vector2(2, 3), radius=5.0, color=pygame.Color('red'),
+                          impact=pygame.math.Vector2(0, 1), delta_degree=90)
+        self.assertEqual(len(self.sys), 5000)
+        self.assertEqual(len(self.sys._data.tobytes()), 5000 * len(particles.Offset) * 4)
+        self.sys.render(glm.mat4x4(), glm.mat4x4())
+
+        # emit one more is skipped
+        self.sys.emit(origin=pygame.math.Vector2(2, 3), radius=5.0, color=pygame.Color('red'),
+                      impact=pygame.math.Vector2(0, 1), delta_degree=90)
+        self.assertEqual(len(self.sys), 5000)
+        self.assertEqual(len(self.sys._data.tobytes()), 5000 * len(particles.Offset) * 4)
 
     def test_position_update(self):
         for _ in range(2):
