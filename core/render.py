@@ -123,6 +123,13 @@ class Camera:
         rect.center = self.center.copy()
         return rect
 
+    def to_world_pos(self, screen_pos: pygame.math.Vector2) -> pygame.math.Vector2:
+        """Transforms the position into a world position."""
+        window_size = pygame.math.Vector2(pygame.display.get_window_size())
+        screen_pos.y = window_size.y - screen_pos.y
+        pos = (screen_pos - window_size / 2) / self.zoom
+        return pos.rotate(self.rotation) + self.center
+
     def _get_view_matrix(self) -> glm.mat4x4:
         """Return the view matrix (usually after camera moved)."""
         up_vector = glm.rotate(self._up, glm.radians(self.rotation), self._into)

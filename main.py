@@ -47,6 +47,13 @@ class AsteroidsField(render.RenderBatch):
         self.sprites.data[:, sprite.Offset.ROTATION] += elapsed_ms * 0.01
 
 
+def query(arr: sprite.SpriteArray, rect: pygame.FRect):
+    return numpy.where(
+        (rect.left <= arr.data[:, sprite.Offset.POS_X]) & (arr.data[:, sprite.Offset.POS_X] <= rect.right) &
+        (rect.top <= arr.data[:, sprite.Offset.POS_Y]) & (arr.data[:, sprite.Offset.POS_Y] <= rect.bottom)
+    )
+
+
 BREAK: float = 0.0015
 
 
@@ -168,6 +175,26 @@ class DemoState(app.State):
     def process_event(self, event: pygame.event.Event) -> None:
         if event.type == pygame.QUIT or (event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE):
             self.engine.pop()
+
+        if event.type == pygame.MOUSEBUTTONDOWN:
+            pos = self.camera.to_world_pos(pygame.math.Vector2(pygame.mouse.get_pos()))
+            #self.asteroids.add_asteroid(pos, 1.0, pygame.math.Vector2(0, 0))
+
+            r = pygame.FRect(0, 0, 64, 64)
+            r.center = pos
+            indices = query(self.asteroids.sprites, r)[0]
+
+            exp = 0.1
+            if not pygame.mouse.get_pressed()[0]:
+                exp *= -1
+
+            for i in indices:
+                x, y = self.asteroids.sprites.data[i, sprite.Offset.POS_X:sprite.Offset.POS_Y+1]
+                p = pygame.math.Vector2(x, y)
+                r = self.asteroids.sprites.data[i, sprite.Offset.SIZE_X]
+                if p.distance_squared_to(pos) <= r ** 2:
+                    self.asteroids.sprites.data[indices, sprite.Offset.SIZE_X] *= numpy.exp(exp)
+                    self.asteroids.sprites.data[indices, sprite.Offset.SIZE_Y] *= numpy.exp(exp)
 
     def update_player(self, elapsed_ms: int) -> None:
         keys = pygame.key.get_pressed()
