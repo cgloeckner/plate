@@ -24,33 +24,35 @@ class RenderTest(unittest.TestCase):
         self.assertEqual(s.clip.w, 3)
         self.assertEqual(s.clip.h, 4)
 
-    """
-    def test_tuple(self):
-        s = sprite.Sprite(self.tex, pygame.Rect(6, 7, 8, 9))
-        s.center.x = 1
-        s.center.y = 2
-        s.origin.y = 0.25
-        s.scale.x = 3
-        s.scale.y = 4
-        s.rotation = 5
-        s.brightness = 10
-        s.color = pygame.Color(255, 0, 255)
+    def test_add(self):
+        sys = sprite.SpriteArray()
+        s = sprite.Sprite(self.tex)
+        s.center.x = 70
+        s.center.y = 71
+        s.velocity.x = 72
+        s.velocity.y = 73
+        s.origin.x = 0.75
+        s.origin.y = 0.9
+        s.rotation = 135
+        s.color = pygame.Color(123, 63, 94)
+        s.brightness = 1.32
+        sys.add(s)
 
-        t = s.as_tuple()
-        self.assertEqual(len(t), len(sprite.Offset))
-        self.assertEqual(t[sprite.Offset.POS_X], s.center.x)
-        self.assertEqual(t[sprite.Offset.POS_Y], s.center.y)
-        self.assertEqual(t[sprite.Offset.ORIGIN_X], s.origin.x)
-        self.assertEqual(t[sprite.Offset.ORIGIN_Y], s.origin.y)
-        self.assertEqual(t[sprite.Offset.SIZE_X], s.clip.w * s.scale.x)
-        self.assertEqual(t[sprite.Offset.SIZE_Y], s.clip.h * s.scale.y)
-        self.assertEqual(t[sprite.Offset.ROTATION], s.rotation)
-        self.assertEqual(t[sprite.Offset.COLOR_R], s.color.a / 255.0)
-        self.assertEqual(t[sprite.Offset.COLOR_G], s.color.g / 255.0)
-        self.assertEqual(t[sprite.Offset.COLOR_B], s.color.b / 255.0)
-        self.assertEqual(t[sprite.Offset.CLIP_X], s.clip.x / 10)
-        self.assertEqual(t[sprite.Offset.CLIP_Y], s.clip.y / 8)
-        self.assertEqual(t[sprite.Offset.CLIP_W], s.clip.w / 10)
-        self.assertEqual(t[sprite.Offset.CLIP_H], s.clip.h / 8)
-        self.assertEqual(t[sprite.Offset.BRIGHTNESS], s.brightness)
-    """
+        self.assertEqual(len(sys), 1)
+        self.assertAlmostEqual(sys.data[0, sprite.Offset.POS_X], s.center.x)
+        self.assertAlmostEqual(sys.data[0, sprite.Offset.POS_Y], s.center.y)
+        self.assertAlmostEqual(sys.data[0, sprite.Offset.VEL_X], s.velocity.x)
+        self.assertAlmostEqual(sys.data[0, sprite.Offset.VEL_Y], s.velocity.y)
+        self.assertAlmostEqual(sys.data[0, sprite.Offset.ORIGIN_X], s.origin.x)
+        self.assertAlmostEqual(sys.data[0, sprite.Offset.ORIGIN_Y], s.origin.y)
+        self.assertAlmostEqual(sys.data[0, sprite.Offset.SIZE_X], s.clip.w * s.scale.x)
+        self.assertAlmostEqual(sys.data[0, sprite.Offset.SIZE_Y], s.clip.h * s.scale.y)
+        self.assertAlmostEqual(sys.data[0, sprite.Offset.ROTATION], s.rotation)
+        self.assertAlmostEqual(sys.data[0, sprite.Offset.COLOR_R], s.color.r / 255.0)
+        self.assertAlmostEqual(sys.data[0, sprite.Offset.COLOR_G], s.color.g / 255.0)
+        self.assertAlmostEqual(sys.data[0, sprite.Offset.COLOR_B], s.color.b / 255.0)
+        self.assertAlmostEqual(sys.data[0, sprite.Offset.CLIP_X], s.clip.x / 10)
+        self.assertAlmostEqual(sys.data[0, sprite.Offset.CLIP_Y], s.clip.y / 8)
+        self.assertAlmostEqual(sys.data[0, sprite.Offset.CLIP_W], s.clip.w / 10)
+        self.assertAlmostEqual(sys.data[0, sprite.Offset.CLIP_H], s.clip.h / 8)
+        self.assertAlmostEqual(sys.data[0, sprite.Offset.BRIGHTNESS], s.brightness, 5)

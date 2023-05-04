@@ -41,7 +41,7 @@ class AsteroidsField(render.RenderBatch):
         self.add(s)
 
     def update(self, elapsed_ms: int) -> None:
-        self.sprites.update(elapsed_ms)
+        sprite.update_movement(self.sprites, elapsed_ms)
 
         # update rotation
         self.sprites.data[:, sprite.Offset.ROTATION] += elapsed_ms * 0.01
@@ -103,7 +103,7 @@ class FighterSystem(render.RenderBatch):
     """
 
     def update(self, elapsed_ms: int) -> None:
-        self.sprites.update(elapsed_ms)
+        sprite.update_movement(self.sprites, elapsed_ms)
 
     def update_enemy(self, index: int, elapsed_ms: int, total_ms: int) -> None:
         player_pos = pygame.math.Vector2(*self.sprites.data[0, sprite.Offset.POS_X:sprite.Offset.POS_Y+1])
