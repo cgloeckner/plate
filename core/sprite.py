@@ -6,7 +6,6 @@ from typing import Optional
 from enum import IntEnum, auto
 
 
-SPEED: float = 0.01
 VELOCITY_FADE: float = 0.0005
 
 
