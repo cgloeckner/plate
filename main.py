@@ -19,9 +19,7 @@ class StarField:
         self.texture = resources.texture_from_surface(context, surface)
         self.texture.filter = moderngl.NEAREST, moderngl.NEAREST
 
-        self.sprite = sprite.Sprite(self.texture)
-        self.sprite.origin.x = 0
-        self.sprite.origin.y = 0
+        self.sprite = sprite.Sprite(texture=self.texture, origin=pygame.Vector2())
 
 
 class AsteroidsField(render.RenderBatch):
@@ -45,13 +43,6 @@ class AsteroidsField(render.RenderBatch):
 
         # update rotation
         self.sprites.data[:, sprite.Offset.ROTATION] += elapsed_ms * 0.01
-
-
-def query(arr: sprite.SpriteArray, rect: pygame.FRect):
-    return numpy.where(
-        (rect.left <= arr.data[:, sprite.Offset.POS_X]) & (arr.data[:, sprite.Offset.POS_X] <= rect.right) &
-        (rect.top <= arr.data[:, sprite.Offset.POS_Y]) & (arr.data[:, sprite.Offset.POS_Y] <= rect.bottom)
-    )
 
 
 BREAK: float = 0.0015
@@ -81,10 +72,10 @@ class FighterSystem(render.RenderBatch):
             self.particle_system.emit(origin=pos, radius=5.0, color=pygame.Color('orange'), impact=impact,
                                       delta_degree=170)
 
-    def decelerate(self, index: int,elapsed_ms: int) -> None:
+    def decelerate(self, index: int, elapsed_ms: int) -> None:
         self.sprites.data[index, sprite.Offset.VEL_X:sprite.Offset.VEL_Y+1] *= numpy.exp(-BREAK * elapsed_ms)
 
-    def rotate(self, index: int,elapsed_ms: int) -> None:
+    def rotate(self, index: int, elapsed_ms: int) -> None:
         # NOTE: elapsed_ms is negative if rotating in the opposite direction
         delta = 0.075 * elapsed_ms
 
@@ -162,6 +153,8 @@ class DemoState(app.State):
         # create fighters
         self.fighters = FighterSystem(self.engine.context, self.cache, self.parts, 1000)
         s = sprite.Sprite(self.fighters.tex, clip=pygame.Rect(0, 0, 32, 32))
+        s.center.x = 8000
+        s.center.y = 4500
         self.fighters.add(s)
 
         for i in range(100):
@@ -178,17 +171,14 @@ class DemoState(app.State):
 
         if event.type == pygame.MOUSEBUTTONDOWN:
             pos = self.camera.to_world_pos(pygame.math.Vector2(pygame.mouse.get_pos()))
-            #self.asteroids.add_asteroid(pos, 1.0, pygame.math.Vector2(0, 0))
-
-            r = pygame.FRect(0, 0, 64, 64)
-            r.center = pos
-            indices = query(self.asteroids.sprites, r)[0]
+            indices = self.camera.query_visible(self.asteroids.sprites.data)
 
             exp = 0.1
             if not pygame.mouse.get_pressed()[0]:
                 exp *= -1
 
             for i in indices:
+                # FIXME: accidentially affects multiple asteroids right now
                 x, y = self.asteroids.sprites.data[i, sprite.Offset.POS_X:sprite.Offset.POS_Y+1]
                 p = pygame.math.Vector2(x, y)
                 r = self.asteroids.sprites.data[i, sprite.Offset.SIZE_X]

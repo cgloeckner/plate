@@ -2,7 +2,7 @@
 
 based on https://github.com/moderngl/moderngl/blob/master/examples/geometry_shader_sprites.py
 """
-
+import numpy
 import pygame
 import moderngl
 import glm
@@ -122,6 +122,20 @@ class Camera:
         rect = pygame.Rect(0, 0, *self.get_size())
         rect.center = self.center.copy()
         return rect
+
+    def get_bounding_rect(self) -> pygame.FRect:
+        """Returns a rectangle that contains the visible in-game area, enlarged so that even rotation is caught."""
+        w, h = self.get_size()
+        diagonal = (w ** 2 + h ** 2) ** 0.5
+        return pygame.FRect(*self.center, diagonal, diagonal)
+
+    def query_visible(self, data: numpy.ndarray) -> numpy.ndarray:
+        """Query visible elements from the given array using an enlarged bounding rectangle."""
+        rect = self.get_bounding_rect()
+        return numpy.where(
+            (rect.left <= data[:, sprite.Offset.POS_X]) & (data[:, sprite.Offset.POS_X] <= rect.right) &
+            (rect.top <= data[:, sprite.Offset.POS_Y]) & (data[:, sprite.Offset.POS_Y] <= rect.bottom)
+        )[0]
 
     def to_world_pos(self, screen_pos: pygame.math.Vector2) -> pygame.math.Vector2:
         """Transforms the position into a world position."""

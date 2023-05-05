@@ -2,40 +2,32 @@ import moderngl
 import pygame
 import numpy
 
-from typing import Optional
+from dataclasses import dataclass, field
 from enum import IntEnum, auto
 
 
 VELOCITY_FADE: float = 0.0005
 
 
+@dataclass
 class Sprite:
-    """Combines sprite data such as
+    texture: moderngl.Texture
 
-    # FIXME: make this more useful ._.
-    position: as pygame.math.Vector2, defaults to (0, 0)
-    velocity: as pygame.math.Vector2, defaults to (0, 0)
-    origin: as pygame.math.Vector2, defaults to (0.5, 0.5)
-    scale: as pygame.math.Vector2, defaults to either the clipping size (if provided) or the texture size (fallback)
-    rotation: as float in degree, defaults to 0
-    color: as pygame.Color, defaults to 'white', but with alpha=0 of 255 (which gives 0% shift)
-    texture: as provided
-    clip: as pygame.Rect in pixel coordinates
-    brightness: as float, defaults to 1.0
-    """
+    center: pygame.math.Vector2 = field(default_factory=pygame.math.Vector2)
+    velocity: pygame.math.Vector2 = field(default_factory=pygame.math.Vector2)
+    origin: pygame.math.Vector2 = field(default_factory=lambda: pygame.math.Vector2(0.5, 0.5))
+    scale: pygame.math.Vector2 = field(default_factory=lambda: pygame.math.Vector2(1, 1))
 
-    def __init__(self, texture: moderngl.Texture, clip: Optional[pygame.Rect] = None):
-        """Creates a sprite using a texture and an optional clipping rectangle."""
-        self.center = pygame.math.Vector2(0, 0)
-        self.velocity = pygame.math.Vector2(0, 0)
-        self.origin = pygame.math.Vector2(0.5, 0.5)
-        self.scale = pygame.math.Vector2(1, 1)
-        self.rotation = 0.0
-        self.color = pygame.Color('white')
+    color: pygame.Color = field(default_factory=lambda: pygame.Color('white'))
+    clip: pygame.Rect = field(default_factory=lambda: pygame.Rect(0, 0, -1, 0))
+
+    rotation: float = 0.0
+    brightness: float = 1.0
+
+    def __post_init__(self):
         self.color.a = 0
-        self.brightness = 1.0
-        self.clip = pygame.Rect(0, 0, *texture.size) if clip is None else clip
-        self.texture = texture
+        if self.clip.w == -1:
+            self.clip = pygame.Rect(0, 0, *self.texture.size)
 
     def to_array(self) -> numpy.ndarray:
         # prepare data
@@ -67,6 +59,27 @@ class Sprite:
         data[Offset.BRIGHTNESS] = self.brightness
 
         return data
+
+    @staticmethod
+    def from_array(data: numpy.ndarray, texture: moderngl.Texture) -> 'Sprite':
+        s = Sprite(texture=texture)
+        s.center.x = data[Offset.POS_X]
+        s.center.y = data[Offset.POS_Y]
+        s.velocity.x = data[Offset.VEL_X]
+        s.velocity.y = data[Offset.VEL_Y]
+        s.origin.x = data[Offset.ORIGIN_X]
+        s.origin.y = data[Offset.ORIGIN_Y]
+        s.rotation = data[Offset.ROTATION]
+        s.color = pygame.Color([int(data[offset] * 255) for offset in [Offset.COLOR_R, Offset.COLOR_G, Offset.COLOR_B,
+                                                                       Offset.COLOR_A]])
+        s.brightness = data[Offset.BRIGHTNESS]
+        s.clip.x = data[Offset.CLIP_X] * texture.size[0]
+        s.clip.y = data[Offset.CLIP_Y] * texture.size[1]
+        s.clip.w = data[Offset.CLIP_W] * texture.size[0]
+        s.clip.h = data[Offset.CLIP_H] * texture.size[1]
+
+        s.scale = data[Offset.SIZE_X] / s.clip.w
+        return s
 
 
 class Offset(IntEnum):
@@ -111,10 +124,16 @@ class SpriteArray:
         # insert sprite data
         self.data[index] = sprite.to_array()
 
+    def get(self, index: int) -> Sprite:
+        """Query the sprite at the given index."""
+        return Sprite.from_array(self.data[index])
+
     def clear(self) -> None:
+        """Clear the entire array."""
         self.data = numpy.zeros((0, len(Offset)), dtype=numpy.float32)
 
     def to_bytes(self) -> bytes:
+        """Converts the array to a single byte stream."""
         return self.data.tobytes()
 
 
