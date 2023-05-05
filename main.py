@@ -178,13 +178,13 @@ class DemoState(app.State):
                 exp *= -1
 
             for i in indices:
-                # FIXME: accidentially affects multiple asteroids right now
+                # FIXME: affects objects in 1. quadrant and before rotation ._.
                 x, y = self.asteroids.sprites.data[i, sprite.Offset.POS_X:sprite.Offset.POS_Y+1]
                 p = pygame.math.Vector2(x, y)
                 r = self.asteroids.sprites.data[i, sprite.Offset.SIZE_X]
                 if p.distance_squared_to(pos) <= r ** 2:
-                    self.asteroids.sprites.data[indices, sprite.Offset.SIZE_X] *= numpy.exp(exp)
-                    self.asteroids.sprites.data[indices, sprite.Offset.SIZE_Y] *= numpy.exp(exp)
+                    self.asteroids.sprites.data[i, sprite.Offset.SIZE_X] *= numpy.exp(exp)
+                    self.asteroids.sprites.data[i, sprite.Offset.SIZE_Y] *= numpy.exp(exp)
 
     def update_player(self, elapsed_ms: int) -> None:
         keys = pygame.key.get_pressed()
