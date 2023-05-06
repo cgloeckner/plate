@@ -127,7 +127,9 @@ class Camera:
         """Returns a rectangle that contains the visible in-game area, enlarged so that even rotation is caught."""
         w, h = self.get_size()
         diagonal = (w ** 2 + h ** 2) ** 0.5
-        return pygame.FRect(*self.center, diagonal, diagonal)
+        rect = pygame.FRect(0, 0, diagonal, diagonal)
+        rect.center = self.center
+        return rect
 
     def query_visible(self, data: numpy.ndarray) -> numpy.ndarray:
         """Query visible elements from the given array using an enlarged bounding rectangle."""
