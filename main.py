@@ -186,7 +186,7 @@ class DemoState(app.State):
             for i in indices:
                 x, y = self.asteroids.sprites.data[i, sprite.Offset.POS_X:sprite.Offset.POS_Y+1]
                 p = pygame.math.Vector2(x, y)
-                r = self.asteroids.sprites.data[i, sprite.Offset.SIZE_X]
+                r = self.asteroids.sprites.data[i, sprite.Offset.SIZE_X] // 2
                 if p.distance_squared_to(pos) <= r ** 2:
                     self.asteroids.sprites.data[i, sprite.Offset.SIZE_X] *= numpy.exp(exp)
                     self.asteroids.sprites.data[i, sprite.Offset.SIZE_Y] *= numpy.exp(exp)
