@@ -31,6 +31,9 @@ class AsteroidsField(render.RenderBatch):
         self.tex = cache.get_svg('data/sprites/asteroid.svg', scale=10)
         self.tex.filter = moderngl.NEAREST, moderngl.NEAREST
 
+    def get_data(self) -> numpy.ndarray:
+        return self.sprites.data
+
     def add_asteroid(self, center: pygame.math.Vector2, scale: float, velocity: pygame.math.Vector2) -> None:
         s = sprite.Sprite(self.tex)
         s.center = center
@@ -46,6 +49,21 @@ class AsteroidsField(render.RenderBatch):
         self.sprites.data[:, sprite.Offset.ROTATION] += elapsed_ms * 0.01
 
 
+def query_collision_indices(first: numpy.ndarray, second: numpy.ndarray, radius_mod: float) -> list:
+    """Calculate all collisions between the given objects."""
+    # calculate difference vectors between all points
+    diff = (first[:, sprite.Offset.POS_X:sprite.Offset.POS_Y + 1, numpy.newaxis] -
+            second[:, sprite.Offset.POS_X:sprite.Offset.POS_Y + 1, numpy.newaxis].T)
+    dist_sq = numpy.sum(diff ** 2, axis=1)
+    max_radii = (first[:, sprite.Offset.SIZE_X, numpy.newaxis] * 0.5 * radius_mod +
+                 second[:, sprite.Offset.SIZE_X] * 0.5 * radius_mod) ** 2
+
+    upper_indices = numpy.triu_indices(dist_sq.shape[0], k=1)
+    collisions = numpy.where(dist_sq[upper_indices] <= max_radii[upper_indices])
+    rows, cols = upper_indices
+    return [(rows[collisions][i], cols[collisions][i]) for i in range(len(collisions[0]))]
+
+
 BREAK: float = 0.0015
 
 
@@ -54,12 +72,16 @@ class FighterSystem(render.RenderBatch):
                  num_max_fighters: int):
         self.sprites = sprite.SpriteArray()
         super().__init__(context, cache, num_max_fighters, self.sprites)
+
         self.particle_system = particle_system
 
         self.tex = cache.get_png('data/sprites/ship.png')
         self.tex.filter = moderngl.NEAREST, moderngl.NEAREST
 
         self.forward = pygame.math.Vector2(0, 1)
+
+    def get_data(self) -> numpy.ndarray:
+        return self.sprites.data
 
     def accelerate(self, index: int, elapsed_ms: int) -> None:
         rot = self.sprites.data[index, sprite.Offset.ROTATION]
@@ -154,8 +176,8 @@ class DemoState(app.State):
         # create fighters
         self.fighters = FighterSystem(self.engine.context, self.cache, self.parts, 1000)
         s = sprite.Sprite(self.fighters.tex, clip=pygame.Rect(0, 0, 32, 32))
-        s.center.x = 8000
-        s.center.y = 4500
+        #s.center.x = 8000
+        #s.center.y = 4500
         self.fighters.add(s)
 
         for i in range(100):
@@ -179,17 +201,27 @@ class DemoState(app.State):
             pos = self.camera.to_world_pos(pygame.math.Vector2(pygame.mouse.get_pos()))
             indices = self.camera.query_visible(self.asteroids.sprites.data)
 
-            exp = 0.1
-            if not pygame.mouse.get_pressed()[0]:
-                exp *= -1
+            # not used atm
+            #exp = 0.1
+            #if not pygame.mouse.get_pressed()[0]:
+            #    exp *= -1
 
+            # query at which asteroids the user clicked
+            clicked = list()
             for i in indices:
                 x, y = self.asteroids.sprites.data[i, sprite.Offset.POS_X:sprite.Offset.POS_Y+1]
                 p = pygame.math.Vector2(x, y)
                 r = self.asteroids.sprites.data[i, sprite.Offset.SIZE_X] // 2
                 if p.distance_squared_to(pos) <= r ** 2:
-                    self.asteroids.sprites.data[i, sprite.Offset.SIZE_X] *= numpy.exp(exp)
-                    self.asteroids.sprites.data[i, sprite.Offset.SIZE_Y] *= numpy.exp(exp)
+                    # click on asteroid!
+                    clicked.append(i)
+
+            # traverse backwards to avoid index invalidation
+            for i in reversed(clicked):
+                self.asteroids.sprites.data = numpy.delete(self.asteroids.sprites.data, i, axis=0)
+                # not used atm
+                # self.asteroids.sprites.data[i, sprite.Offset.SIZE_X] *= numpy.exp(exp)
+                # self.asteroids.sprites.data[i, sprite.Offset.SIZE_Y] *= numpy.exp(exp)
 
     def update_player(self, elapsed_ms: int) -> None:
         keys = pygame.key.get_pressed()
@@ -223,6 +255,22 @@ class DemoState(app.State):
 
         self.asteroids.update(elapsed_ms)
         self.fighters.update(elapsed_ms)
+
+        data = self.asteroids.get_data()
+        indices = self.camera.query_visible(data)
+        visible = data[indices]
+        # asteroids vs asteroids
+        collision_indices = query_collision_indices(visible, visible, 1.0)
+        # TODO: handle it
+        #print(collision_indices)
+
+        # ships vs ships
+        data2 = self.fighters.get_data()
+        indices2 = self.camera.query_visible(data2)
+        visible2 = data[indices2]
+        collision_indices = query_collision_indices(visible2, visible2, 1.0)
+        # TODO: handle it
+        #print(collision_indices)
 
         # let camera follow player
         self.camera.center = pygame.math.Vector2(

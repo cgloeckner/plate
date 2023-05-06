@@ -124,10 +124,6 @@ class SpriteArray:
         # insert sprite data
         self.data[index] = sprite.to_array()
 
-    def get(self, index: int) -> Sprite:
-        """Query the sprite at the given index."""
-        return Sprite.from_array(self.data[index])
-
     def clear(self) -> None:
         """Clear the entire array."""
         self.data = numpy.zeros((0, len(Offset)), dtype=numpy.float32)
