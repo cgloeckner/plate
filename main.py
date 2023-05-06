@@ -65,6 +65,10 @@ class AsteroidsField(render.RenderBatch):
         # update rotation
         self.sprites.data[:, sprite.Offset.ROTATION] += elapsed_ms * 0.01
 
+        # sort by SIZE_X (descending)
+        indices = numpy.argsort(-self.sprites.data[:, sprite.Offset.SIZE_X])
+        self.sprites.data = self.sprites.data[indices]
+
 
 def query_collision_indices(first: numpy.ndarray, first_indices: numpy.ndarray, second: numpy.ndarray,
                             second_indices: numpy.ndarray, radius_mod: float) -> list:
@@ -200,11 +204,11 @@ class DemoState(app.State):
         # create fighters
         self.fighters = FighterSystem(self.engine.context, self.cache, self.parts, 1000)
         s = sprite.Sprite(self.fighters.tex, clip=pygame.Rect(0, 0, 32, 32))
-        #s.center.x = 8000
-        #s.center.y = 4500
+        s.center.x = 8000
+        s.center.y = 4500
         self.fighters.add(s)
 
-        for i in range(10):
+        for i in range(100):
             s = sprite.Sprite(self.fighters.tex, clip=pygame.Rect(0, 0, 32, 32))
             s.center.x -= 200 + i * 50
             s.center.y -= 200 + i * 50
