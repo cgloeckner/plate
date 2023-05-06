@@ -6,9 +6,6 @@ from dataclasses import dataclass, field
 from enum import IntEnum, auto
 
 
-VELOCITY_FADE: float = 0.0005
-
-
 @dataclass
 class Sprite:
     texture: moderngl.Texture
@@ -16,11 +13,11 @@ class Sprite:
     center: pygame.math.Vector2 = field(default_factory=pygame.math.Vector2)
     velocity: pygame.math.Vector2 = field(default_factory=pygame.math.Vector2)
     origin: pygame.math.Vector2 = field(default_factory=lambda: pygame.math.Vector2(0.5, 0.5))
-    scale: pygame.math.Vector2 = field(default_factory=lambda: pygame.math.Vector2(1, 1))
 
     color: pygame.Color = field(default_factory=lambda: pygame.Color('white'))
     clip: pygame.Rect = field(default_factory=lambda: pygame.Rect(0, 0, -1, 0))
 
+    scale: float = 1.0
     rotation: float = 0.0
     brightness: float = 1.0
 
@@ -31,7 +28,7 @@ class Sprite:
 
     def to_array(self) -> numpy.ndarray:
         # prepare data
-        size = pygame.math.Vector2(self.clip.size).elementwise() * self.scale
+        size = pygame.math.Vector2(self.clip.size) * self.scale
         color_norm = self.color.normalize()
         tex_size = pygame.math.Vector2(self.texture.size)
         clip_xy = pygame.math.Vector2(self.clip.topleft).elementwise() / tex_size
@@ -113,7 +110,7 @@ class SpriteArray:
 
     def __len__(self) -> int:
         """Returns the number of sprite."""
-        return len(self.data)
+        return len(self.data.shape[0])
 
     def add(self, sprite: Sprite) -> None:
         """Add the given sprite to the sprite array."""
@@ -128,15 +125,11 @@ class SpriteArray:
         """Clear the entire array."""
         self.data = numpy.zeros((0, len(Offset)), dtype=numpy.float32)
 
-    def to_bytes(self) -> bytes:
-        """Converts the array to a single byte stream."""
-        return self.data.tobytes()
 
-
-def update_movement(arr: SpriteArray, elapsed_ms: int) -> None:
+def update_movement(arr: SpriteArray, elapsed_ms: int, velocity_fade: float = 0.0005) -> None:
     """Update the sprites' positions using their velocity vectors."""
     # update positions
     arr.data[:, Offset.POS_X:Offset.POS_Y+1] += arr.data[:, Offset.VEL_X:Offset.VEL_Y+1] * elapsed_ms
 
     # decrease velocity
-    arr.data[:, Offset.VEL_X:Offset.VEL_Y+1] *= numpy.exp(-VELOCITY_FADE * elapsed_ms)
+    arr.data[:, Offset.VEL_X:Offset.VEL_Y+1] *= numpy.exp(-velocity_fade * elapsed_ms)

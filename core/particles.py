@@ -8,6 +8,7 @@ import random
 import glm
 
 from enum import IntEnum, auto
+from typing import Optional
 
 from . import resources
 
@@ -62,8 +63,8 @@ class ParticleSystem:
         """Returns the number of particles that are currently in use."""
         return len(self._data)
 
-    def emit(self, origin: pygame.math.Vector2, radius: float, color: pygame.Color, impact: pygame.math.Vector2,
-             delta_degree: float) -> None:
+    def emit(self, origin: pygame.math.Vector2, radius: float, color: pygame.Color,
+             impact: Optional[pygame.math.Vector2] = None, delta_degree: float = 180.0) -> None:
         """Emit a single particle using the given data.
 
         The particle is created with the given origin, radius and color. The given impact vector specifies from which
@@ -78,7 +79,9 @@ class ParticleSystem:
 
         # randomize the particle's velocity vector
         angle = 180 + random.uniform(-delta_degree, delta_degree)
-        velocity = impact.rotate(angle) * random.uniform(0.01, 2 * SPEED)
+        if impact is None:
+            impact = pygame.math.Vector2(0, 1)
+        velocity = impact.rotate(angle) * random.uniform(1.0, 10.0)
 
         # resize array
         self._data.resize((self._data.shape[0] + 1, self._data.shape[1]), refcheck=False)
@@ -102,8 +105,8 @@ class ParticleSystem:
         threshold, it is removed. The order of particles is not kept when particles are removed.
         """
         # update positions
-        displacement = self._data[:, Offset.DIR_X:Offset.DIR_Y] * elapsed_ms * SPEED
-        self._data[:, Offset.POS_X:Offset.POS_Y] += displacement
+        displacement = self._data[:, Offset.DIR_X:Offset.DIR_Y+1] * elapsed_ms * SPEED
+        self._data[:, Offset.POS_X:Offset.POS_Y+1] += displacement
 
         # update scales
         scale_decay = numpy.exp(-SHRINK * elapsed_ms)

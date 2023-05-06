@@ -98,14 +98,14 @@ class RenderBatch:
 
     def render(self, texture: moderngl.Texture, view_matrix: glm.mat4x4, projection_matrix: glm.mat4x4) -> None:
         """Renders the vertex data as points using the given texture, view matrix and projection matrix."""
-        self._vbo.write(self._data.to_bytes())
+        self._vbo.write(self._data.data.tobytes())
 
         texture.use(0)
         self._program['view'].write(view_matrix)
         self._program['projection'].write(projection_matrix)
         self._program['sprite_texture'] = 0
 
-        self._vao.render(mode=moderngl.POINTS)
+        self._vao.render(mode=moderngl.POINTS, vertices=self._data.data.shape[0])
 
 
 # ----------------------------------------------------------------------------------------------------------------------

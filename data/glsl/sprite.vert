@@ -3,6 +3,7 @@
 in vec2 in_position;
 in vec2 in_origin;
 in vec2 in_size;
+in float in_scale;
 in float in_rotation;
 in vec4 in_color;
 in vec2 in_clip_offset;
