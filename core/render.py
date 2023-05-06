@@ -31,6 +31,7 @@ class RenderBatch:
     def __init__(self, context: moderngl.Context, cache: resources.Cache, max_num_sprites: int,
                  sprite_array: sprite.SpriteArray) -> None:
         """Initializes buffers for a maximum number of sprites."""
+        self._context = context
         self._max_num_sprites = max_num_sprites
 
         self._vbo = context.buffer(reserve=len(sprite.Offset) * 4 * max_num_sprites, dynamic=True)
@@ -44,7 +45,9 @@ class RenderBatch:
 
         self._num_sprites = 0
         self._texture = None
+        self._alt_texture = None
         self._data = sprite_array
+        self._show_bounding_circles = False
 
     def clear(self) -> None:
         """Resets the buffer data."""
@@ -58,7 +61,7 @@ class RenderBatch:
 
     def get_texture(self) -> moderngl.Texture:
         """Returns the texture that is bound to the renderer batch."""
-        return self._texture
+        return self._alt_texture if self._show_bounding_circles else self._texture
 
     def add(self, s: sprite.Sprite) -> None:
         """Adds the sprite's data to the vertex array and saves the texture reference for later rendering.
@@ -72,6 +75,26 @@ class RenderBatch:
 
         self._num_sprites += 1
         self._data.add(s)
+
+    def has_enabled_bounding_circles(self) -> bool:
+        return self._show_bounding_circles
+
+    def enable_bounding_circles(self, show_bounding_circles: bool) -> None:
+        self._show_bounding_circles = show_bounding_circles
+
+        if show_bounding_circles and self._alt_texture is None:
+            # create copy of texture
+            w, h = self._texture.size
+            surface = pygame.image.frombuffer(self._texture.read(), (w, h), 'RGBA')
+
+            # draw circle over the first square frame (assuming it's a single row frame sheet)
+            radius = h // 2
+            pygame.gfxdraw.circle(surface, radius, radius, radius - 1, pygame.Color('red'))
+            pygame.image.save(surface, '/tmp/out.png')
+
+            # store as alternative texture
+            self._alt_texture = resources.texture_from_surface(self._context, surface, False)
+            self._alt_texture.filter = moderngl.NEAREST, moderngl.NEAREST
 
     def render(self, texture: moderngl.Texture, view_matrix: glm.mat4x4, projection_matrix: glm.mat4x4) -> None:
         """Renders the vertex data as points using the given texture, view matrix and projection matrix."""

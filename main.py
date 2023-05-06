@@ -1,4 +1,5 @@
 import pygame
+import pygame.gfxdraw
 import moderngl
 import random
 import numpy
@@ -144,7 +145,7 @@ class DemoState(app.State):
             y = random.randrange(0, 900 * 10)
             scale = random.uniform(0.5, 4.0)
             direction = pygame.math.Vector2(0, 1).rotate(random.uniform(0.0, 360.0)) * random.uniform(0.5, 4.0)
-            direction *= 0.01
+            direction *= 0.02
             self.asteroids.add_asteroid(pygame.math.Vector2(x, y), scale, direction)
 
         self.total_ms = 0
@@ -169,6 +170,11 @@ class DemoState(app.State):
         if event.type == pygame.QUIT or (event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE):
             self.engine.pop()
 
+        if event.type == pygame.KEYDOWN and event.key == pygame.K_RETURN:
+            enable = not self.asteroids.has_enabled_bounding_circles()
+            self.asteroids.enable_bounding_circles(enable)
+            self.fighters.enable_bounding_circles(enable)
+
         if event.type == pygame.MOUSEBUTTONDOWN:
             pos = self.camera.to_world_pos(pygame.math.Vector2(pygame.mouse.get_pos()))
             indices = self.camera.query_visible(self.asteroids.sprites.data)
@@ -178,7 +184,6 @@ class DemoState(app.State):
                 exp *= -1
 
             for i in indices:
-                # FIXME: affects objects in 1. quadrant and before rotation ._.
                 x, y = self.asteroids.sprites.data[i, sprite.Offset.POS_X:sprite.Offset.POS_Y+1]
                 p = pygame.math.Vector2(x, y)
                 r = self.asteroids.sprites.data[i, sprite.Offset.SIZE_X]
@@ -229,7 +234,8 @@ class DemoState(app.State):
 
         num_fps = int(self.engine.clock.get_fps())
         if self.total_ms > 250:
-            self.fps.set_string(f'FPS: {num_fps}\n{len(self.parts)} Particles')
+            self.fps.set_string(f'FPS: {num_fps}\n{len(self.parts)} Particles\n{len(self.asteroids)} Asteroids'
+                                f'\n{len(self.fighters)} Spaceships')
             self.total_ms -= 250
 
     def render(self) -> None:

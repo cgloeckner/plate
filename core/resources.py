@@ -9,8 +9,8 @@ import cairosvg
 from typing import Dict, Tuple
 
 
-def texture_from_surface(context: moderngl.Context, surface: pygame.Surface) -> moderngl.Texture:
-    img_data = pygame.image.tostring(surface, 'RGBA', True)
+def texture_from_surface(context: moderngl.Context, surface: pygame.Surface, flipped: bool = True) -> moderngl.Texture:
+    img_data = pygame.image.tostring(surface, 'RGBA', flipped)
     return context.texture(size=surface.get_size(), components=4, data=img_data)
 
 
