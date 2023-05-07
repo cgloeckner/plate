@@ -14,6 +14,8 @@ import moderngl
 from typing import Optional, Dict
 from abc import ABC, abstractmethod
 
+from . import resources
+
 
 class PerformanceMonitor:
     def __init__(self):
@@ -75,6 +77,7 @@ class Engine:
         self.max_fps = 800
         self._queue = list()
 
+        self.cache = resources.Cache(self.context)
         self.perf_monitor = PerformanceMonitor()
 
     def __del__(self):

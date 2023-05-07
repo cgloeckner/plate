@@ -9,11 +9,6 @@ import cairosvg
 from typing import Dict, Tuple
 
 
-def texture_from_surface(context: moderngl.Context, surface: pygame.Surface, flipped: bool = True) -> moderngl.Texture:
-    img_data = pygame.image.tostring(surface, 'RGBA', flipped)
-    return context.texture(size=surface.get_size(), components=4, data=img_data)
-
-
 class Cache:
     """Manages loading and caching data from disk."""
 
@@ -23,6 +18,12 @@ class Cache:
         self.png_cache: Dict[str, moderngl.Texture] = dict()
         self.svg_cache: Dict[Tuple[str, float], moderngl.Texture] = dict()
         self.shader_cache: Dict[str, str] = dict()
+
+    @staticmethod
+    def texture_from_surface(context: moderngl.Context, surface: pygame.Surface,
+                             flipped: bool = True) -> moderngl.Texture:
+        img_data = pygame.image.tostring(surface, 'RGBA', flipped)
+        return context.texture(size=surface.get_size(), components=4, data=img_data)
 
     def get_png(self, path: str) -> moderngl.Texture:
         """Loads a PNG file from path and returns the corresponding texture."""

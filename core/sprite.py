@@ -110,7 +110,7 @@ class SpriteArray:
 
     def __len__(self) -> int:
         """Returns the number of sprite."""
-        return len(self.data.shape[0])
+        return self.data.shape[0]
 
     def add(self, sprite: Sprite) -> None:
         """Add the given sprite to the sprite array."""
@@ -124,12 +124,3 @@ class SpriteArray:
     def clear(self) -> None:
         """Clear the entire array."""
         self.data = numpy.zeros((0, len(Offset)), dtype=numpy.float32)
-
-
-def update_movement(arr: SpriteArray, elapsed_ms: int, velocity_fade: float = 0.0005) -> None:
-    """Update the sprites' positions using their velocity vectors."""
-    # update positions
-    arr.data[:, Offset.POS_X:Offset.POS_Y+1] += arr.data[:, Offset.VEL_X:Offset.VEL_Y+1] * elapsed_ms
-
-    # decrease velocity
-    arr.data[:, Offset.VEL_X:Offset.VEL_Y+1] *= numpy.exp(-velocity_fade * elapsed_ms)

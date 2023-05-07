@@ -57,7 +57,7 @@ class ParticleSystem:
         # particle circle texture
         surface = pygame.Surface((resolution, resolution), flags=pygame.SRCALPHA)
         pygame.draw.circle(surface, pygame.Color('white'), (resolution//2, resolution//2), resolution//2)
-        self._texture = resources.texture_from_surface(context, surface)
+        self._texture = cache.texture_from_surface(context, surface)
 
     def __len__(self) -> int:
         """Returns the number of particles that are currently in use."""

@@ -14,7 +14,7 @@ class Text:
 
     def set_string(self, text: str, antialias: bool = True, color: pygame.Color = pygame.Color('white')) -> None:
         surface = self._font.render(text, antialias, color)
-        texture = resources.texture_from_surface(self._context, surface)
+        texture = resources.Cache.texture_from_surface(self._context, surface)
 
         if self.sprite is not None:
             self.sprite.texture.release()

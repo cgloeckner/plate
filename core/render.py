@@ -10,16 +10,6 @@ import glm
 from . import resources, particles, sprite, text
 
 
-class TextureError(Exception):
-    def __init__(self, expected: moderngl.Texture, found: moderngl.Texture) -> None:
-        super().__init__(f'Unexpected texture: found {id(found)} but expected {id(expected)}')
-        self.expected = expected
-        self.found = found
-
-
-# ----------------------------------------------------------------------------------------------------------------------
-
-
 class RenderBatch:
     """Combines VBO, VAO and Shaders to render 2D sprites.
 
@@ -29,7 +19,7 @@ class RenderBatch:
     """
 
     def __init__(self, context: moderngl.Context, cache: resources.Cache, max_num_sprites: int,
-                 sprite_array: sprite.SpriteArray) -> None:
+                 sprite_array: sprite.SpriteArray, texture: moderngl.Texture) -> None:
         """Initializes buffers for a maximum number of sprites."""
         self._context = context
         self._max_num_sprites = max_num_sprites
@@ -44,7 +34,7 @@ class RenderBatch:
                                            'in_clip_offset', 'in_clip_size', 'in_brightness')])
 
         self._num_sprites = 0
-        self._texture = None
+        self._texture = texture
         self._alt_texture = None
         self._data = sprite_array
         self._show_bounding_circles = False
@@ -55,26 +45,15 @@ class RenderBatch:
         self._texture = None
         self._data.clear()
 
-    def __len__(self) -> int:
-        """Returns the number of sprites that were appended to the renderer."""
-        return self._num_sprites
-
     def get_texture(self) -> moderngl.Texture:
         """Returns the texture that is bound to the renderer batch."""
         return self._alt_texture if self._show_bounding_circles else self._texture
 
-    def add(self, s: sprite.Sprite) -> None:
-        """Adds the sprite's data to the vertex array and saves the texture reference for later rendering.
-        Throws an `TextureError` if the given sprite's texture does not the previous texture.
-        """
-        if self._texture is None:
-            self._texture = s.texture
-
-        if id(self._texture) != id(s.texture):
-            raise TextureError(expected=self._texture, found=s.texture)
-
-        self._num_sprites += 1
-        self._data.add(s)
+    def set_texture(self, texture: moderngl.Texture) -> None:
+        """Sets the texture."""
+        self._texture = texture
+        if self._show_bounding_circles:
+            self._renew_alt_texture()
 
     def has_enabled_bounding_circles(self) -> bool:
         return self._show_bounding_circles
@@ -83,18 +62,20 @@ class RenderBatch:
         self._show_bounding_circles = show_bounding_circles
 
         if show_bounding_circles and self._alt_texture is None:
-            # create copy of texture
-            w, h = self._texture.size
-            surface = pygame.image.frombuffer(self._texture.read(), (w, h), 'RGBA')
+            self._renew_alt_texture()
 
-            # draw circle over the first square frame (assuming it's a single row frame sheet)
-            radius = h // 2
-            pygame.gfxdraw.circle(surface, radius, radius, radius - 1, pygame.Color('red'))
-            pygame.image.save(surface, '/tmp/out.png')
+    def _renew_alt_texture(self) -> None:
+        # create copy of texture
+        w, h = self._texture.size
+        surface = pygame.image.frombuffer(self._texture.read(), (w, h), 'RGBA')
 
-            # store as alternative texture
-            self._alt_texture = resources.texture_from_surface(self._context, surface, False)
-            self._alt_texture.filter = moderngl.NEAREST, moderngl.NEAREST
+        # draw circle over the first square frame (assuming it's a single row frame sheet)
+        radius = h // 2
+        pygame.gfxdraw.circle(surface, radius, radius, radius - 1, pygame.Color('red'))
+
+        # store as alternative texture
+        self._alt_texture = resources.texture_from_surface(self._context, surface, False)
+        self._alt_texture.filter = moderngl.NEAREST, moderngl.NEAREST
 
     def render(self, texture: moderngl.Texture, view_matrix: glm.mat4x4, projection_matrix: glm.mat4x4) -> None:
         """Renders the vertex data as points using the given texture, view matrix and projection matrix."""
@@ -123,7 +104,7 @@ class Camera:
     def __init__(self, context: moderngl.Context, cache: resources.Cache) -> None:
         """Creates the camera and sprite rendering capabilities."""
         self._data = sprite.SpriteArray()
-        self._renderer = RenderBatch(context, cache, 1, self._data)
+        self._renderer = RenderBatch(context, cache, 1, self._data, None)
 
         self.center = pygame.math.Vector2(0, 0)
         self.rotation = 0.0
@@ -189,7 +170,7 @@ class Camera:
     def render(self, s: sprite.Sprite) -> None:
         """Render the given sprite."""
         self._renderer.clear()
-        self._renderer.add(s)
+        self._renderer.set_texture(s.texture)
         self._renderer.render(s.texture, self._m_view, self._m_proj)
 
     def render_text(self, t: text.Text) -> None:
@@ -197,7 +178,7 @@ class Camera:
             return
 
         self._renderer.clear()
-        self._renderer.add(t.sprite)
+        self._renderer.set_texture(t.sprite.texture)
         self._renderer.render(t.sprite.texture, self._m_view, self._m_proj)
 
     def render_batch(self, batch: RenderBatch) -> None:
