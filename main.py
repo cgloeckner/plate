@@ -4,6 +4,7 @@ import random
 
 from typing import List
 
+import core
 from core import app, sprite, text
 
 import game
@@ -21,7 +22,6 @@ class DemoState(app.State):
         self.total_ms = 0
         self.fps = text.Text(self.engine.context, self.engine.cache.get_font(font_size=30))
         self.perf = text.Text(self.engine.context, self.engine.cache.get_font(font_size=24))
-        self.sys = text.Text(self.engine.context, self.engine.cache.get_font(font_size=24))
 
         self.destroy: List[int] = []
 
@@ -38,8 +38,8 @@ class DemoState(app.State):
 
         # create spacecrafts
         s = sprite.Sprite(self.renderer.spacecrafts.get_texture(), clip=pygame.Rect(0, 0, 32, 32))
-        #s.center.x = 8000
-        #s.center.y = 4500
+        s.center.x = 800
+        s.center.y = 450
         self.scene.spacecrafts.add(s)
 
         for i in range(5):
@@ -48,6 +48,10 @@ class DemoState(app.State):
             s.color = pygame.Color('red')
             s.color.a = 96
             self.scene.spacecrafts.add(s)
+
+        self.renderer.continue_starfield(
+            *self.scene.spacecrafts.data[0, core.SpriteOffset.POS_X: core.SpriteOffset.POS_Y+1]
+        )
 
     def on_collision(self, index1: int, type1: game.ObjectType, index2: int, type2: game.ObjectType) -> None:
         if type1 == game.ObjectType.ASTEROID and type2 == game.ObjectType.SPACECRAFT:
@@ -116,8 +120,13 @@ class DemoState(app.State):
             # let camera follow player
             if len(self.scene.spacecrafts) > 0:
                 self.scene.camera.center = pygame.math.Vector2(
-                    *self.scene.spacecrafts.data[0, sprite.Offset.POS_X:sprite.Offset.POS_Y+1])
+                    *self.scene.spacecrafts.data[0, sprite.Offset.POS_X:sprite.Offset.POS_Y+1]
+                )
                 self.scene.camera.rotation = self.scene.spacecrafts.data[0, sprite.Offset.ROTATION]
+
+            self.renderer.continue_starfield(
+                *self.scene.spacecrafts.data[0, sprite.Offset.POS_X:sprite.Offset.POS_Y + 1]
+            )
 
             self.scene.camera.update()
 
@@ -126,20 +135,20 @@ class DemoState(app.State):
         if self.total_ms > 100:
             self.fps.set_string(f'FPS: {num_fps}')
 
-            self.perf.set_string(str(self.engine.perf_monitor))
-            self.perf.sprite.center.y = pygame.display.get_window_size()[1]
-            self.perf.sprite.origin.y = 1.0
-
             systems = {
                 'asteroids': len(self.scene.asteroids),
                 'spacecrafts': len(self.scene.spacecrafts),
                 'particles': len(self.scene.particles)
             }
-            self.sys.set_string('\n'.join(f'{key}: {systems[key]} elements' for key in systems))
-            self.sys.sprite.center.x = pygame.display.get_window_size()[0]
-            self.sys.sprite.center.y = pygame.display.get_window_size()[1]
-            self.sys.sprite.origin.x = 1.0
-            self.sys.sprite.origin.y = 1.0
+            pos = self.scene.spacecrafts.data[0, core.SpriteOffset.POS_X:core.SpriteOffset.POS_Y+1]
+            rot = self.scene.spacecrafts.data[0, core.SpriteOffset.ROTATION]
+            monitor_string = str(self.engine.perf_monitor)
+            monitor_string += '\n' * 2 + '\n'.join(f'{key}: {systems[key]} elements' for key in systems)
+            monitor_string += '\n' * 2 + f'Player: ({int(pos[0]):04d} | {int(pos[1]):04d}) >> {int(rot)}°'
+
+            self.perf.set_string(monitor_string)
+            self.perf.sprite.center.y = pygame.display.get_window_size()[1]
+            self.perf.sprite.origin.y = 1.0
 
             self.total_ms -= 100
 
@@ -148,7 +157,6 @@ class DemoState(app.State):
 
         self.scene.gui.render_text(self.fps)
         self.scene.gui.render_text(self.perf)
-        self.scene.gui.render_text(self.sys)
 
 
 def main() -> None:

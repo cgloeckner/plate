@@ -34,10 +34,7 @@ class PerformanceMonitor:
         self._category = category
 
     def __str__(self) -> str:
-        out = ''
-        for key in self.elapsed_ms:
-            out += f'{key}: {self.elapsed_ms[key]}ms\n'
-        return out
+        return '\n'.join(f'{key}: {self.elapsed_ms[key]}ms' for key in self.elapsed_ms)
 
 
 # ----------------------------------------------------------------------------------------------------------------------
