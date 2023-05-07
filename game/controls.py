@@ -25,9 +25,8 @@ class ControlsSystem(scene.BaseSystem):
         impact = self.forward.rotate(rot)
         pos = pygame.math.Vector2(
             *self.scene.spacecrafts.data[index, core.SpriteOffset.POS_X:core.SpriteOffset.POS_Y + 1]) - impact * 16
-        if random.random() > 0.75:
-            self.scene.particles.emit(origin=pos, radius=4.0, color=pygame.Color('orange'), impact=impact,
-                                      delta_degree=170)
+        self.scene.particles.emit(origin=pos, radius=4.0, color=pygame.Color('orange'), impact=impact,
+                                  delta_degree=170)
 
     def decelerate(self, index: int, elapsed_ms: int) -> None:
         self.scene.spacecrafts.data[index, core.SpriteOffset.VEL_X:core.SpriteOffset.VEL_Y + 1] *= numpy.exp(
@@ -68,6 +67,13 @@ class ControlsSystem(scene.BaseSystem):
                 self.scene.camera.zoom = 0.25
 
     def update_enemy(self, index: int, elapsed_ms: int) -> None:
+        self.scene.spacecrafts.data[index, core.SpriteOffset.VEL_X:core.SpriteOffset.VEL_Y+1] = \
+            self.scene.spacecrafts.data[0, core.SpriteOffset.VEL_X:core.SpriteOffset.VEL_Y+1]
+
+        self.scene.spacecrafts.data[index, core.SpriteOffset.ROTATION] = \
+            self.scene.spacecrafts.data[0, core.SpriteOffset.ROTATION]
+
+        """
         player_pos = pygame.math.Vector2(
             *self.scene.spacecrafts.data[0, core.SpriteOffset.POS_X:core.SpriteOffset.POS_Y + 1])
         own_pos = pygame.math.Vector2(
@@ -86,6 +92,7 @@ class ControlsSystem(scene.BaseSystem):
             self.rotate(index, elapsed_ms)
 
         self.accelerate(index, elapsed_ms)
+        """
 
     def update(self, elapsed_ms: int) -> None:
         self.update_player(elapsed_ms)

@@ -2,6 +2,8 @@ import pygame
 import pygame.gfxdraw
 import random
 
+from typing import List
+
 from core import app, sprite, text
 
 import game
@@ -19,9 +21,12 @@ class DemoState(app.State):
         self.total_ms = 0
         self.fps = text.Text(self.engine.context, self.engine.cache.get_font(font_size=30))
         self.perf = text.Text(self.engine.context, self.engine.cache.get_font(font_size=24))
+        self.sys = text.Text(self.engine.context, self.engine.cache.get_font(font_size=24))
+
+        self.destroy: List[int] = []
 
         # create asteroids
-        for _ in range(1_000):
+        for _ in range(500):
             s = sprite.Sprite(self.renderer.asteroids.get_texture())
             s.center.x = random.randrange(0, 1600 * 10)
             s.center.y = random.randrange(0, 900 * 10)
@@ -33,21 +38,25 @@ class DemoState(app.State):
 
         # create spacecrafts
         s = sprite.Sprite(self.renderer.spacecrafts.get_texture(), clip=pygame.Rect(0, 0, 32, 32))
-        s.center.x = 8000
-        s.center.y = 4500
+        #s.center.x = 8000
+        #s.center.y = 4500
         self.scene.spacecrafts.add(s)
 
-        for i in range(10):
+        for i in range(5):
             s = sprite.Sprite(self.renderer.spacecrafts.get_texture(), clip=pygame.Rect(0, 0, 32, 32))
-            s.center.x += 200 + i * 50
-            s.center.y += 200 + i * 50
+            s.center.x += 100 + i * 50
             s.color = pygame.Color('red')
             s.color.a = 96
             self.scene.spacecrafts.add(s)
 
     def on_collision(self, index1: int, type1: game.ObjectType, index2: int, type2: game.ObjectType) -> None:
+        if type1 == game.ObjectType.ASTEROID and type2 == game.ObjectType.SPACECRAFT:
+            # destroy spacecraft!
+            if index2 == 0:
+                return
+            self.destroy.append(index2)
+
         #print('collision', index1, type1, index2, type2)
-        pass
 
     def process_event(self, event: pygame.event.Event) -> None:
         if event.type == pygame.QUIT or (event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE):
@@ -94,6 +103,8 @@ class DemoState(app.State):
         with self.engine.perf_monitor:
             self.engine.perf_monitor('physics')
             self.physics.update(elapsed_ms)
+            self.scene.explode_spacecrafts(self.destroy)
+            self.destroy = []
 
         with self.engine.perf_monitor:
             self.engine.perf_monitor('particles')
@@ -103,9 +114,10 @@ class DemoState(app.State):
             self.engine.perf_monitor('camera')
 
             # let camera follow player
-            self.scene.camera.center = pygame.math.Vector2(
-                *self.scene.spacecrafts.data[0, sprite.Offset.POS_X:sprite.Offset.POS_Y+1])
-            self.scene.camera.rotation = self.scene.spacecrafts.data[0, sprite.Offset.ROTATION]
+            if len(self.scene.spacecrafts) > 0:
+                self.scene.camera.center = pygame.math.Vector2(
+                    *self.scene.spacecrafts.data[0, sprite.Offset.POS_X:sprite.Offset.POS_Y+1])
+                self.scene.camera.rotation = self.scene.spacecrafts.data[0, sprite.Offset.ROTATION]
 
             self.scene.camera.update()
 
@@ -113,9 +125,22 @@ class DemoState(app.State):
         num_fps = int(self.engine.clock.get_fps())
         if self.total_ms > 100:
             self.fps.set_string(f'FPS: {num_fps}')
+
             self.perf.set_string(str(self.engine.perf_monitor))
             self.perf.sprite.center.y = pygame.display.get_window_size()[1]
             self.perf.sprite.origin.y = 1.0
+
+            systems = {
+                'asteroids': len(self.scene.asteroids),
+                'spacecrafts': len(self.scene.spacecrafts),
+                'particles': len(self.scene.particles)
+            }
+            self.sys.set_string('\n'.join(f'{key}: {systems[key]} elements' for key in systems))
+            self.sys.sprite.center.x = pygame.display.get_window_size()[0]
+            self.sys.sprite.center.y = pygame.display.get_window_size()[1]
+            self.sys.sprite.origin.x = 1.0
+            self.sys.sprite.origin.y = 1.0
+
             self.total_ms -= 100
 
     def render(self) -> None:
@@ -123,6 +148,7 @@ class DemoState(app.State):
 
         self.scene.gui.render_text(self.fps)
         self.scene.gui.render_text(self.perf)
+        self.scene.gui.render_text(self.sys)
 
 
 def main() -> None:

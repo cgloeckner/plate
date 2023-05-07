@@ -64,7 +64,8 @@ class ParticleSystem:
         return len(self._data)
 
     def emit(self, origin: pygame.math.Vector2, radius: float, color: pygame.Color,
-             impact: Optional[pygame.math.Vector2] = None, delta_degree: float = 180.0) -> None:
+             impact: Optional[pygame.math.Vector2] = None, delta_degree: float = 180.0, spread: float = 0.0,
+             speed: float = 1.0) -> None:
         """Emit a single particle using the given data.
 
         The particle is created with the given origin, radius and color. The given impact vector specifies from which
@@ -74,6 +75,9 @@ class ParticleSystem:
         if len(self) == self._max_num_particles:
             return
 
+        if spread == 0.0:
+            spread = radius
+
         # normalize color but skip alpha value
         color_norm = color.normalize()[:-1]
 
@@ -81,15 +85,15 @@ class ParticleSystem:
         angle = 180 + random.uniform(-delta_degree, delta_degree)
         if impact is None:
             impact = pygame.math.Vector2(0, 1)
-        velocity = impact.rotate(angle) * random.uniform(1.0, 10.0)
+        velocity = impact.rotate(angle) * random.uniform(1.0, 10.0) * speed
 
         # resize array
         self._data.resize((self._data.shape[0] + 1, self._data.shape[1]), refcheck=False)
         index = self._data.shape[0] - 1
 
         # create particle data
-        self._data[index, Offset.POS_X] = origin.x + random.uniform(-radius, radius)
-        self._data[index, Offset.POS_Y] = origin.y + random.uniform(-radius, radius)
+        self._data[index, Offset.POS_X] = origin.x + random.uniform(-spread, spread)
+        self._data[index, Offset.POS_Y] = origin.y + random.uniform(-spread, spread)
         self._data[index, Offset.DIR_X] = velocity.x
         self._data[index, Offset.DIR_Y] = velocity.y
         self._data[index, Offset.SIZE] = radius
