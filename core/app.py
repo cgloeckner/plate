@@ -11,8 +11,34 @@ import moderngl
 # import imgui
 # from imgui.integrations.pygame import PygameRenderer
 
-from typing import Optional
+from typing import Optional, Dict
 from abc import ABC, abstractmethod
+
+
+class PerformanceMonitor:
+    def __init__(self):
+        self.elapsed_ms: Dict[str, int] = {}
+        self._category: str = ''
+        self._enter_ticks = 0
+
+    def __enter__(self) -> None:
+        self._enter_ticks = pygame.time.get_ticks()
+
+    def __exit__(self, exc_type, exc_val, exc_tb) -> None:
+        delta_time = pygame.time.get_ticks() - self._enter_ticks
+        self.elapsed_ms[self._category] = delta_time
+
+    def __call__(self, category: str) -> None:
+        self._category = category
+
+    def __str__(self) -> str:
+        out = ''
+        for key in self.elapsed_ms:
+            out += f'{key}: {self.elapsed_ms[key]}ms\n'
+        return out
+
+
+# ----------------------------------------------------------------------------------------------------------------------
 
 
 class Engine:
@@ -49,6 +75,8 @@ class Engine:
         self.max_fps = 800
         self._queue = list()
 
+        self.perf_monitor = PerformanceMonitor()
+
     def __del__(self):
         """Quit pygame when the engine is destroyed."""
         pygame.quit()
@@ -71,25 +99,32 @@ class Engine:
                 # quit mainloop
                 break
 
-            # handle events
-            for event in pygame.event.get():
-                # FIXME
-                # self._impl.process_event(event)
-                state.process_event(event)
+            with self.perf_monitor:
+                self.perf_monitor('input_events')
+
+                # handle events
+                for event in pygame.event.get():
+                    # FIXME
+                    # self._impl.process_event(event)
+                    state.process_event(event)
 
             # update app logic
             elapsed_ms = self.clock.tick(self.max_fps)
             # FIXME
             # imgui.new_frame()
+
             state.update(elapsed_ms)
 
             # render app
-            self.context.clear()
-            state.render()
-            # FIXME
-            # imgui.render()
-            # self._impl.render(imgui.get_draw_data())
-            pygame.display.flip()
+            with self.perf_monitor:
+                self.perf_monitor('opengl_render')
+
+                self.context.clear()
+                state.render()
+                # FIXME
+                # imgui.render()
+                # self._impl.render(imgui.get_draw_data())
+                pygame.display.flip()
 
 
 class State(ABC):
