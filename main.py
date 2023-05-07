@@ -38,7 +38,7 @@ class DemoState(app.State):
         s.center.y = 4500
         self.scene.spacecrafts.add(s)
 
-        for i in range(150):
+        for i in range(10):
             s = sprite.Sprite(self.renderer.spacecrafts.get_texture(), clip=pygame.Rect(0, 0, 32, 32))
             s.center.x += 200 + i * 50
             s.center.y += 200 + i * 50
@@ -123,7 +123,7 @@ class DemoState(app.State):
         self.renderer.render()
 
         self.scene.gui.render_text(self.fps)
-        self.scene.gui.render_text(self.perf)y
+        self.scene.gui.render_text(self.perf)
 
 
 def main() -> None:
