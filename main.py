@@ -122,8 +122,8 @@ class DemoState(app.State):
     def render(self) -> None:
         self.renderer.render()
 
-        self.scene.gui.render_text(self.fps)  # FIXME: is not rendered atm.. idk why
-        self.scene.gui.render_text(self.perf)  # FIXME: is not rendered atm.. idk why
+        self.scene.gui.render_text(self.fps)
+        self.scene.gui.render_text(self.perf)y
 
 
 def main() -> None:

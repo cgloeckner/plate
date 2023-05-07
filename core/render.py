@@ -170,7 +170,7 @@ class Camera:
     def render(self, s: sprite.Sprite) -> None:
         """Render the given sprite."""
         self._renderer.clear()
-        self._renderer.set_texture(s.texture)
+        self._data.add(s)
         self._renderer.render(s.texture, self._m_view, self._m_proj)
 
     def render_text(self, t: text.Text) -> None:
@@ -178,7 +178,7 @@ class Camera:
             return
 
         self._renderer.clear()
-        self._renderer.set_texture(t.sprite.texture)
+        self._data.add(t.sprite)
         self._renderer.render(t.sprite.texture, self._m_view, self._m_proj)
 
     def render_batch(self, batch: RenderBatch) -> None:

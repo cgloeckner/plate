@@ -43,7 +43,7 @@ class RendererSystem(scene.BaseSystem):
         pass
 
     def render(self) -> None:
-        self.scene.camera.render(self.starfield_sprite)  # FIXME: is not rendered atm.. idk why
+        self.scene.camera.render(self.starfield_sprite)
         self.scene.camera.render_batch(self.asteroids)
         self.scene.camera.render_particles(self.scene.particles)
         self.scene.camera.render_batch(self.spacecrafts)
