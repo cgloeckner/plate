@@ -39,11 +39,22 @@ class RendererSystem(scene.BaseSystem):
         self.starfield_sprite.clip.w *= 10
         self.starfield_sprite.clip.h *= 10
 
+        self.lightmap = core.create_lightmap(scene_obj.engine.context, 1000)
+        self.light_sprite = core.Sprite(self.lightmap)
+        self.light_sprite.color = pygame.Color('yellow')
+        self.light_sprite.color.a = 50
+
     def update(self, elapsed_ms: int) -> None:
         pass
 
     def render(self) -> None:
         self.scene.camera.render(self.starfield_sprite)
+
+        self.light_sprite.center.x = self.scene.spacecrafts.data[0, core.SpriteOffset.POS_X]
+        self.light_sprite.center.y = self.scene.spacecrafts.data[0, core.SpriteOffset.POS_Y]
+        self.scene.camera.render(self.light_sprite)
+
         self.scene.camera.render_batch(self.asteroids)
         self.scene.camera.render_particles(self.scene.particles)
         self.scene.camera.render_batch(self.spacecrafts)
+

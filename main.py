@@ -1,10 +1,9 @@
 import pygame
 import pygame.gfxdraw
-import moderngl
 import random
-import numpy
 
-from core import app, resources, particles, render, sprite, text
+from core import app, sprite, text
+
 import game
 
 
