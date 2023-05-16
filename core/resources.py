@@ -6,7 +6,13 @@ import moderngl
 import io
 import cairosvg
 
-from typing import Dict, Tuple
+from typing import Dict, Tuple, List
+
+
+def texture_from_surface(context: moderngl.Context, surface: pygame.Surface,
+                         flipped: bool = True) -> moderngl.Texture:
+    img_data = pygame.image.tostring(surface, 'RGBA', flipped)
+    return context.texture(size=surface.get_size(), components=4, data=img_data)
 
 
 class Cache:
@@ -18,12 +24,6 @@ class Cache:
         self.png_cache: Dict[str, moderngl.Texture] = dict()
         self.svg_cache: Dict[Tuple[str, float], moderngl.Texture] = dict()
         self.shader_cache: Dict[str, str] = dict()
-
-    @staticmethod
-    def texture_from_surface(context: moderngl.Context, surface: pygame.Surface,
-                             flipped: bool = True) -> moderngl.Texture:
-        img_data = pygame.image.tostring(surface, 'RGBA', flipped)
-        return context.texture(size=surface.get_size(), components=4, data=img_data)
 
     def get_png(self, path: str) -> moderngl.Texture:
         """Loads a PNG file from path and returns the corresponding texture."""
@@ -62,6 +62,13 @@ class Cache:
                 self.shader_cache[path] = handle.read()
 
         return self.shader_cache[path]
+
+    def get_shaders(self, path: str, types: List[str]) -> List[str]:
+        """Loads multiple shaders from related source files."""
+        shaders = list()
+        for type_ in types:
+            shaders.append(self.get_shader(f'{path}.{type_}'))
+        return shaders
 
     def get_font(self, font_name: str = '', font_size: int = 18) -> pygame.font.Font:
         """Loads a SysFont via filename and font size."""

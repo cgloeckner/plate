@@ -52,7 +52,7 @@ class RendererSystem(scene.BaseSystem):
                 color_step = (color.r, color.g, color.b, 255 - int(color.a * radius / STARFIELD_LOD))
                 pygame.draw.circle(surface, color_step, (x, y), radius * random.uniform(2.0, 4.0))
 
-        texture = self.scene.engine.cache.texture_from_surface(self.scene.engine.context, surface)
+        texture = core.texture_from_surface(self.scene.engine.context, surface)
         texture.filter = moderngl.NEAREST, moderngl.NEAREST
 
         return texture

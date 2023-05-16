@@ -36,17 +36,16 @@ FADE_THRESHOLD: float = 0.05
 class ParticleSystem:
     """Manages creating, updating and rendering lots of circular particles."""
 
-    def __init__(self, context: moderngl.Context, cache: resources.Cache, max_num_particles: int,
-                 resolution: float) -> None:
+    def __init__(self, context: moderngl.Context, max_num_particles: int, resolution: float, vertex_shader: str,
+                 geometry_shader: str, fragment_shader: str) -> None:
         """Create shader-based particle system with a given maximum number of particles, where each particle is a
         circle with the given texture resolution.
         """
         self._max_num_particles = max_num_particles
         self._data = numpy.zeros((0, len(Offset)), dtype=numpy.float32)
 
-        self._program = context.program(vertex_shader=cache.get_shader('data/glsl/particles.vert'),
-                                        geometry_shader=cache.get_shader('data/glsl/particles.geom'),
-                                        fragment_shader=cache.get_shader('data/glsl/particles.frag'))
+        self._program = context.program(vertex_shader=vertex_shader, geometry_shader=geometry_shader,
+                                        fragment_shader=fragment_shader)
         self._program['sprite_texture'] = 0
 
         self._vbo = context.buffer(reserve=max_num_particles * len(Offset) * 4, dynamic=True)
@@ -57,7 +56,7 @@ class ParticleSystem:
         # particle circle texture
         surface = pygame.Surface((resolution, resolution), flags=pygame.SRCALPHA)
         pygame.draw.circle(surface, pygame.Color('white'), (resolution//2, resolution//2), resolution//2)
-        self._texture = cache.texture_from_surface(context, surface)
+        self._texture = resources.texture_from_surface(context, surface)
 
     def __len__(self) -> int:
         """Returns the number of particles that are currently in use."""

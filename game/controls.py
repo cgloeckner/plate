@@ -23,7 +23,7 @@ class ControlsSystem(scene.BaseSystem):
         self.scene.spacecrafts.data[index, core.SpriteOffset.VEL_X:core.SpriteOffset.VEL_Y + 1] = vel.xy
 
         impact = self.forward.rotate(rot)
-        pos = core.Sprite.get_center(self.spacecrafts.data[index]) - impact * 16
+        pos = core.Sprite.get_center(self.scene.spacecrafts.data[index]) - impact * 16
         self.scene.particles.emit(origin=pos, radius=4.0, color=pygame.Color('orange'), impact=impact,
                                   delta_degree=170)
 

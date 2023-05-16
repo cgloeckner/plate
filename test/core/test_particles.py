@@ -10,9 +10,14 @@ class ParticlesTest(unittest.TestCase):
 
     def setUp(self):
         self.ctx = moderngl.create_context(standalone=True)
-        self.cache = resources.Cache(self.ctx)
 
-        self.sys = particles.ParticleSystem(self.ctx, self.cache, 5000, 150)
+        cache = resources.Cache(self.ctx)
+        shaders = cache.get_shaders('data/glsl/particles', ['vert', 'geom', 'frag'])
+
+        self.sys = particles.ParticleSystem(self.ctx, 5000, 150, *shaders)
+
+    def tearDown(self) -> None:
+        self.ctx.release()
 
     def test_emit(self):
         self.assertEqual(len(self.sys), 0)

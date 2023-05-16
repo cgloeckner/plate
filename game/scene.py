@@ -14,7 +14,8 @@ class Scene:
         self.spacecrafts = core.SpriteArray()
         self.asteroids = core.SpriteArray()
 
-        self.particles = core.ParticleSystem(engine.context, engine.cache, 50_000, 128)
+        shaders = engine.cache.get_shaders('data/glsl/particles', ['vert', 'geom', 'frag'])
+        self.particles = core.ParticleSystem(engine.context, 50_000, 128, *shaders)
         self.camera = core.Camera(engine.context, engine.cache)
         self.gui = core.GuiCamera(engine.context, engine.cache)
 
