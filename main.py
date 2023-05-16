@@ -49,9 +49,7 @@ class DemoState(app.State):
             s.color.a = 96
             self.scene.spacecrafts.add(s)
 
-        self.renderer.continue_starfield(
-            *self.scene.spacecrafts.data[0, core.SpriteOffset.POS_X: core.SpriteOffset.POS_Y+1]
-        )
+        self.renderer.continue_starfield(*core.Sprite.get_center(self.scene.spacecrafts.data[0]))
 
     def on_collision(self, index1: int, type1: game.ObjectType, index2: int, type2: game.ObjectType) -> None:
         if type1 == game.ObjectType.ASTEROID and type2 == game.ObjectType.SPACECRAFT:
@@ -119,14 +117,10 @@ class DemoState(app.State):
 
             # let camera follow player
             if len(self.scene.spacecrafts) > 0:
-                self.scene.camera.center = pygame.math.Vector2(
-                    *self.scene.spacecrafts.data[0, sprite.Offset.POS_X:sprite.Offset.POS_Y+1]
-                )
+                self.scene.camera.center = core.Sprite.get_center(self.scene.spacecrafts.data[0])
                 self.scene.camera.rotation = self.scene.spacecrafts.data[0, sprite.Offset.ROTATION]
 
-            self.renderer.continue_starfield(
-                *self.scene.spacecrafts.data[0, sprite.Offset.POS_X:sprite.Offset.POS_Y + 1]
-            )
+            self.renderer.continue_starfield(*core.Sprite.get_center(self.scene.spacecrafts.data[0]))
 
             self.scene.camera.update()
 
@@ -140,7 +134,7 @@ class DemoState(app.State):
                 'spacecrafts': len(self.scene.spacecrafts),
                 'particles': len(self.scene.particles)
             }
-            pos = self.scene.spacecrafts.data[0, core.SpriteOffset.POS_X:core.SpriteOffset.POS_Y+1]
+            pos = core.Sprite.get_center(self.scene.spacecrafts.data[0])
             rot = self.scene.spacecrafts.data[0, core.SpriteOffset.ROTATION]
             monitor_string = str(self.engine.perf_monitor)
             monitor_string += '\n' * 2 + '\n'.join(f'{key}: {systems[key]} elements' for key in systems)

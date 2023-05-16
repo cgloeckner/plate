@@ -25,8 +25,7 @@ class Scene:
         print(indices)
 
         for index in indices:
-            pos = pygame.math.Vector2(
-                *self.spacecrafts.data[index, core.SpriteOffset.POS_X:core.SpriteOffset.POS_Y+1])
+            pos = core.Sprite.get_center(self.spacecrafts.data[index])
             for _ in range(150):
                 self.particles.emit(origin=pos, radius=5.0, spread=10.0, speed=10.0, color=pygame.Color('white'))
 

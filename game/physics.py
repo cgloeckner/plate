@@ -73,7 +73,7 @@ class PhysicsSystem(scene.BaseSystem):
         else:
             raise NotImplemented
 
-        return pygame.math.Vector2(*arr.data[index, core.SpriteOffset.POS_X:core.SpriteOffset.POS_Y+1])
+        return core.Sprite.get_center(arr.data[index])
 
     def on_collision(self, index1: int, type1: ObjectType, index2: int, type2: ObjectType) -> None:
         center1 = self.get_sprite_center(index1, type1)

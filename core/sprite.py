@@ -58,10 +58,13 @@ class Sprite:
         return data
 
     @staticmethod
+    def get_center(data: numpy.ndarray) -> pygame.math.Vector2:
+        return pygame.math.Vector2(*data[Offset.POS_X:Offset.POS_Y+1])
+
+    @staticmethod
     def from_array(data: numpy.ndarray, texture: moderngl.Texture) -> 'Sprite':
         s = Sprite(texture=texture)
-        s.center.x = data[Offset.POS_X]
-        s.center.y = data[Offset.POS_Y]
+        s.center = Sprite.get_center(data)
         s.velocity.x = data[Offset.VEL_X]
         s.velocity.y = data[Offset.VEL_Y]
         s.origin.x = data[Offset.ORIGIN_X]
