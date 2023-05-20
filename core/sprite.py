@@ -61,6 +61,8 @@ class Sprite:
     def get_center(data: numpy.ndarray) -> pygame.math.Vector2:
         return pygame.math.Vector2(*data[Offset.POS_X:Offset.POS_Y+1])
 
+    # FIXME: go for smaller portions like get_size() etc.
+    """
     @staticmethod
     def from_array(data: numpy.ndarray, texture: moderngl.Texture) -> 'Sprite':
         s = Sprite(texture=texture)
@@ -80,6 +82,7 @@ class Sprite:
 
         s.scale = data[Offset.SIZE_X] / s.clip.w
         return s
+    """
 
 
 class Offset(IntEnum):
