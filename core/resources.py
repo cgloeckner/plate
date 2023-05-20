@@ -75,4 +75,5 @@ class Cache:
         if font_name == '':
             return pygame.font.SysFont(pygame.font.get_default_font(), font_size)
 
+        # FIXME: finish implementation
         raise NotImplementedError()
